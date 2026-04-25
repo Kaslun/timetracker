@@ -9,7 +9,7 @@
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
-import importPlugin from 'eslint-plugin-import';
+import importPlugin from 'eslint-plugin-import-x';
 import prettier from 'eslint-config-prettier';
 
 export default [
@@ -30,7 +30,7 @@ export default [
   {
     plugins: {
       'react-hooks': reactHooks,
-      import: importPlugin,
+      'import-x': importPlugin,
     },
     languageOptions: {
       ecmaVersion: 2022,
@@ -56,24 +56,28 @@ export default [
       },
     },
     settings: {
-      'import/resolver': {
+      'import-x/resolver': {
         typescript: { project: ['tsconfig.node.json', 'tsconfig.web.json'] },
       },
     },
     rules: {
-      ...reactHooks.configs.recommended.rules,
+      // Classic hook correctness rules only — this project doesn't use the React Compiler
+      // so the full recommended-latest preset (which includes compiler purity rules) is
+      // intentionally not spread here.
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
       'no-console': ['error', { allow: ['warn', 'error'] }],
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-invalid-void-type': ['error', { allowInGenericTypeArguments: true }],
       '@typescript-eslint/consistent-type-imports': ['warn', { prefer: 'type-imports' }],
-      'import/order': [
+      'import-x/order': [
         'warn',
         {
           groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index'],
           'newlines-between': 'never',
         },
       ],
-      'import/no-unresolved': 'off',
+      'import-x/no-unresolved': 'off',
     },
   },
   {
