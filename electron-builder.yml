@@ -1,0 +1,32 @@
+appId: com.attensi.timetracker
+productName: Attensi Time Tracker
+copyright: Copyright © 2026 Attensi
+directories:
+  output: release
+  buildResources: build
+files:
+  - out/**
+  - package.json
+  - "!**/*.map"
+extraResources: []
+asarUnpack:
+  - "**/*.{node,dll}"
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+  icon: build/icon.ico
+  artifactName: AttensiTimeTracker-${version}-${arch}-setup.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: false
+  shortcutName: Attensi Time Tracker
+portable:
+  artifactName: AttensiTimeTracker-${version}-portable.exe
+nodeGypRebuild: false
+buildDependenciesFromSource: false
+npmRebuild: true
