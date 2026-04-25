@@ -1,47 +1,54 @@
-export type Platform = 'win' | 'mac' | 'linux';
+/**
+ * Single source of truth for keyboard shortcuts.
+ *
+ * Keep this list short and verb-led (start, switch, expand, dump, show).
+ * Every shortcut here is registered globally by the main process AND surfaced
+ * in the cheatsheet UI; if you add one, both paths pick it up automatically.
+ */
+
+export type Platform = "win" | "mac" | "linux";
 
 export function detectPlatform(): Platform {
-  if (typeof navigator === 'undefined') return 'win';
+  if (typeof navigator === "undefined") return "win";
   const p = navigator.platform.toLowerCase();
-  if (p.includes('mac')) return 'mac';
-  if (p.includes('linux')) return 'linux';
-  return 'win';
+  if (p.includes("mac")) return "mac";
+  if (p.includes("linux")) return "linux";
+  return "win";
 }
 
 interface Shortcut {
-  /** Mac glyph form, e.g. "⌘ ⇧ K" — used as the symbolic key. */
+  /** Mac glyph form, e.g. "⌘ ⇧ ␣" — for display when navigator.platform is mac. */
   mac: string;
-  /** Windows form, e.g. "Ctrl+Shift+K" — used for global registration. */
+  /** Windows accelerator string, e.g. "Ctrl+Shift+Space" — also used for Electron's globalShortcut. */
   win: string;
-  /** Display label for the cheatsheet under Windows. */
-  label?: string;
+  /** Short imperative label for the cheatsheet. */
+  label: string;
 }
 
 export const SHORTCUTS = {
-  toggleTimer:    { mac: '⌘ ␣',     win: 'Ctrl+Space' },
-  brainDump:      { mac: '⌘ ⇧ K',   win: 'Ctrl+Shift+K' },
-  switchTask:     { mac: '⌘ ⇧ S',   win: 'Ctrl+Shift+S' },
-  expandPill:     { mac: '⌘ E',     win: 'Ctrl+E' },
-  taskSearch:     { mac: '⌘ K',     win: 'Ctrl+K' },
-  fillGaps:       { mac: '⌘ ⇧ F',   win: 'Ctrl+Shift+F' },
-  focusSprint:    { mac: '⌘ ⇧ P',   win: 'Ctrl+Shift+P' },
-  hidePill:       { mac: '⌘ .',     win: 'Ctrl+.' },
-  tagLastCapture: { mac: '⌘ ⇧ T',   win: 'Ctrl+Shift+T' },
-  bodyDoubling:   { mac: '⌘ ⇧ B',   win: 'Ctrl+Shift+B' },
-  cheatsheet:     { mac: '?',       win: '?' },
-  dismiss:        { mac: '⎋',       win: 'Esc' },
+  toggleTimer: { mac: "⌘ ␣", win: "Ctrl+Space", label: "Start / pause" },
+  switchTask: { mac: "⌘ ⇧ ␣", win: "Ctrl+Shift+Space", label: "Switch task" },
+  expandWindow: { mac: "⌘ E", win: "Ctrl+E", label: "Expand / collapse" },
+  brainDump: { mac: "⌘ B", win: "Ctrl+B", label: "Brain dump" },
+  cheatsheet: { mac: "⌘ /", win: "Ctrl+/", label: "Show shortcuts" },
 } as const satisfies Record<string, Shortcut>;
 
 export type ShortcutKey = keyof typeof SHORTCUTS;
 
-export function shortcutLabel(key: ShortcutKey, platform: Platform = detectPlatform()): string {
+/** Display label, platform-aware. */
+export function shortcutLabel(
+  key: ShortcutKey,
+  platform: Platform = detectPlatform(),
+): string {
   const s = SHORTCUTS[key];
-  if (platform === 'mac') return s.mac;
-  return s.win.replace(/Ctrl/g, 'Ctrl').replace(/\+/g, ' ');
+  return platform === "mac" ? s.mac : s.win;
 }
 
-export function globalAccelerator(key: ShortcutKey, platform: Platform = 'win'): string {
+/** Electron globalShortcut accelerator. Maps Ctrl→Cmd on mac. */
+export function globalAccelerator(
+  key: ShortcutKey,
+  platform: Platform = "win",
+): string {
   const s = SHORTCUTS[key];
-  if (platform === 'mac') return s.win.replace('Ctrl', 'Cmd');
-  return s.win;
+  return platform === "mac" ? s.win.replace("Ctrl", "Cmd") : s.win;
 }

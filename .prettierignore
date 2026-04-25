@@ -1,0 +1,8 @@
+dist/
+out/
+release/
+coverage/
+node_modules/
+time-tracker/
+*.sqlite
+package-lock.json

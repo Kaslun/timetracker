@@ -1,11 +1,15 @@
 # Attensi Time Tracker
 
+[![CI](https://github.com/attensi/timetracker/actions/workflows/ci.yml/badge.svg)](https://github.com/attensi/timetracker/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/attensi/timetracker?label=release)](https://github.com/attensi/timetracker/releases/latest)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A calm Windows desktop time tracker. Lives in a small floating pill, captures
 brain-dumps anywhere, recovers gracefully from idle, and exports clean CSV for
 Sheets / Toggl / Harvest. Local-only — your data never leaves the machine.
 
-Stack: Electron 32 + Vite + React 18 + TypeScript + Tailwind, with
-`better-sqlite3` for storage and Zod-validated IPC.
+Stack: Electron 32 + Vite + React 18 + TypeScript, with `better-sqlite3` for
+storage and Zod-validated IPC.
 
 ---
 
@@ -13,7 +17,7 @@ Stack: Electron 32 + Vite + React 18 + TypeScript + Tailwind, with
 
 1. Grab the latest `AttensiTimeTracker-<version>-x64-setup.exe` (NSIS installer)
    or `AttensiTimeTracker-<version>-portable.exe` (no install) from the
-   `release/` folder of a build.
+   [Releases page](https://github.com/attensi/timetracker/releases/latest).
 2. Double-click. Windows SmartScreen will likely show a blue warning because the
    binary isn't code-signed yet — click **More info → Run anyway**. This is a
    one-time prompt for the installer; the portable build prompts each launch.
@@ -27,28 +31,25 @@ The app stores everything in:
 %APPDATA%\Attensi Time Tracker\timetracker.sqlite
 ```
 
-To wipe all data: quit the app, delete that file, relaunch.
-
-By default the app launches at login. Toggle this in **Settings → General →
-Auto-launch on Windows boot**.
+To wipe all data: quit the app, delete that file, relaunch. Toggle "open at
+login" in **Settings → General**.
 
 ---
 
 ## Day-to-day shortcuts
 
-| Action                  | Shortcut          |
-| ----------------------- | ----------------- |
-| Start / pause timer     | `Ctrl + Space`    |
-| Brain dump (anywhere)   | `Ctrl + Shift + K`|
-| Switch task             | `Ctrl + Shift + S`|
-| Fill gaps               | `Ctrl + Shift + F`|
-| Focus sprint            | `Ctrl + Shift + P`|
-| Expand / collapse pill  | `Ctrl + E`        |
-| Hide pill               | `Ctrl + .`        |
-| Show keyboard sheet     | `F1`              |
+Five global shortcuts. They work even when another app has focus.
 
-A full sheet is in **Help → Keyboard shortcuts** or via the `?` button in the
-expanded window.
+| Action                     | Shortcut               |
+| -------------------------- | ---------------------- |
+| Start / pause current task | `Ctrl + Space`         |
+| Switch task (open picker)  | `Ctrl + Shift + Space` |
+| Expand / collapse window   | `Ctrl + E`             |
+| Brain dump                 | `Ctrl + B`             |
+| Show shortcut cheatsheet   | `Ctrl + /`             |
+
+The full sheet is in **Help → Keyboard shortcuts** or via the chevron on the
+right edge of the pill.
 
 ---
 
@@ -64,13 +65,31 @@ npm run dev
 `electron-vite` runs Vite for the renderer and tsc for the main process; the
 Electron app launches once both are ready. Live reload covers both processes.
 
-Useful scripts:
+### One-line health check
 
 ```powershell
-npm run typecheck       # tsc on main + renderer
-npm run build           # production build into out/
-npm run dist:win        # build + nsis + portable into release/
-npm run dist:win:portable  # portable only (faster)
+npm run check     # typecheck + lint + unit tests
+```
+
+CI runs the same command. Aim is < 60 s on a clean clone.
+
+### All scripts
+
+```powershell
+npm run dev               # development with HMR
+npm run build             # production build into out/
+npm run typecheck         # tsc -p main + renderer
+npm run lint              # eslint (errors on `any`, console.log, etc.)
+npm run lint:fix          # eslint --fix
+npm run format            # prettier --write
+npm run format:check      # prettier --check
+npm run test              # vitest run
+npm run test:watch        # vitest --watch
+npm run test:coverage     # vitest with v8 coverage
+npm run test:e2e          # playwright (smoke; needs a `npm run build` first)
+npm run check             # typecheck + lint + test
+npm run dist:win          # build + nsis + portable into release/
+npm run dist:win:portable # portable only (faster)
 ```
 
 The first install runs `electron-builder install-app-deps`, which rebuilds
@@ -80,22 +99,21 @@ The first install runs `electron-builder install-app-deps`, which rebuilds
 ### Repo layout
 
 ```
-electron/
-  main.ts                  app lifecycle, services, app menu
-  preload.ts               contextBridge → window.attensi
-  shared/ipc.ts            Zod schemas for every IPC channel + event
-  db/                      better-sqlite3 connection, migrations, repos
-  ipc/                     ipcMain handlers + broadcast helper
-  services/                idle, shortcuts, tray, autolaunch, csv, menu
-  windows/                 BrowserWindow factory + manager
 src/
-  shared/                  tokens.css, primitives, hotkeys, time, store, api
-  windows/                 pill / expanded / dashboard / intro / toast /
-                           settings / cheatsheet / integration React trees
-  bootstrap.tsx            picks the right root from ?window=…
-build/icon.ico             tray + installer icon
-electron-builder.yml       NSIS + portable Win targets
+  main/           Electron main process (windows, services, ipc, db)
+  renderer/       React UI: components, features (one folder per window),
+                  themes, lib (pure utils), store (Zustand slices)
+  shared/         Types, Zod schemas and constants used by both sides
+tests/
+  unit/           Vitest tests for lib/ and shared/schemas
+  e2e/            Playwright smoke test
+build/icon.ico    tray + installer icon
+electron-builder.yml   NSIS + portable Win targets
 ```
+
+A deeper tour is in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+First-time contributors should start with [`docs/ONBOARDING.md`](docs/ONBOARDING.md).
+Why-we-chose-X explanations live in [`docs/DECISIONS.md`](docs/DECISIONS.md).
 
 ---
 
@@ -119,6 +137,9 @@ release/
   AttensiTimeTracker-0.1.0-portable.exe
   win-unpacked/                              (raw app for debugging)
 ```
+
+CI builds these for every tag push (see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+and the workflows in `.github/workflows/`).
 
 ---
 

@@ -5,6 +5,7 @@
     "moduleResolution": "Bundler",
     "lib": ["ES2022", "DOM"],
     "strict": true,
+    "noUncheckedIndexedAccess": false,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitOverride": true,
@@ -16,9 +17,10 @@
     "outDir": "out/types-node",
     "baseUrl": ".",
     "paths": {
-      "@shared/*": ["electron/shared/*"]
+      "@shared/*": ["src/shared/*"],
+      "@main/*": ["src/main/*"]
     },
     "types": ["node", "electron-vite/node"]
   },
-  "include": ["electron", "electron.vite.config.ts"]
+  "include": ["src/main", "src/shared", "electron.vite.config.ts", "scripts"]
 }

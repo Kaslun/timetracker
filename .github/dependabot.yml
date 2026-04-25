@@ -1,0 +1,23 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 10
+    groups:
+      eslint:
+        patterns: ['eslint*', '@typescript-eslint/*', 'typescript-eslint']
+      vitest:
+        patterns: ['vitest', '@vitest/*']
+      react:
+        patterns: ['react', 'react-dom', '@types/react', '@types/react-dom']
+      electron:
+        patterns: ['electron*', '@electron/*']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday

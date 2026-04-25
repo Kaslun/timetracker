@@ -18,9 +18,9 @@
     "outDir": "out/types-web",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@shared/*": ["electron/shared/*"]
+      "@/*": ["src/renderer/*"],
+      "@shared/*": ["src/shared/*"]
     }
   },
-  "include": ["src"]
+  "include": ["src/renderer", "src/shared"]
 }

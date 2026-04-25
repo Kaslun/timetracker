@@ -1,0 +1,68 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    name: Build & publish Windows release
+    needs: ci
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Build portable + NSIS
+        run: npm run dist:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate SHA-256 checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem release/*.exe | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower()
+            "$hash  $($_.Name)" | Out-File -Append release/SHA256SUMS.txt -Encoding ascii
+          }
+
+      - name: Generate changelog from commits
+        id: changelog
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $prev = git describe --tags --abbrev=0 "$tag^" 2>$null
+          if (-not $prev) { $range = $tag } else { $range = "$prev..$tag" }
+          "## What's changed" | Out-File release/CHANGELOG.md -Encoding utf8
+          "" | Out-File -Append release/CHANGELOG.md -Encoding utf8
+          git log $range --pretty=format:"- %s (%h)" | Out-File -Append release/CHANGELOG.md -Encoding utf8
+          "changelog_path=release/CHANGELOG.md" >> $env:GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body_path: ${{ steps.changelog.outputs.changelog_path }}
+          draft: false
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: |
+            release/*setup.exe
+            release/*portable.exe
+            release/latest.yml
+            release/SHA256SUMS.txt

@@ -1,49 +1,52 @@
-import { defineConfig, externalizeDepsPlugin } from 'electron-vite';
-import react from '@vitejs/plugin-react';
-import { resolve } from 'node:path';
+import { resolve } from "node:path";
+import { defineConfig, externalizeDepsPlugin } from "electron-vite";
+import react from "@vitejs/plugin-react";
+
+const r = (p: string): string => resolve(__dirname, p);
 
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
     build: {
-      outDir: 'out/main',
+      outDir: "out/main",
       rollupOptions: {
-        input: { index: resolve(__dirname, 'electron/main.ts') },
+        input: { index: r("src/main/index.ts") },
       },
     },
     resolve: {
       alias: {
-        '@shared': resolve(__dirname, 'electron/shared'),
+        "@shared": r("src/shared"),
+        "@main": r("src/main"),
       },
     },
   },
   preload: {
     plugins: [externalizeDepsPlugin()],
     build: {
-      outDir: 'out/preload',
+      outDir: "out/preload",
       rollupOptions: {
-        input: { index: resolve(__dirname, 'electron/preload.ts') },
+        input: { index: r("src/main/preload.ts") },
       },
     },
     resolve: {
       alias: {
-        '@shared': resolve(__dirname, 'electron/shared'),
+        "@shared": r("src/shared"),
       },
     },
   },
   renderer: {
-    root: resolve(__dirname, 'src'),
+    root: r("src/renderer"),
     plugins: [react()],
     resolve: {
       alias: {
-        '@': resolve(__dirname, 'src'),
-        '@shared': resolve(__dirname, 'electron/shared'),
+        "@": r("src/renderer"),
+        "@shared": r("src/shared"),
       },
     },
     build: {
-      outDir: resolve(__dirname, 'out/renderer'),
+      outDir: r("out/renderer"),
       rollupOptions: {
-        input: { index: resolve(__dirname, 'src/index.html') },
+        input: { index: r("src/renderer/index.html") },
       },
     },
     server: {
