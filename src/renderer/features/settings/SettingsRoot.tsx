@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { rpc } from "@/lib/api";
-import { TitleBar } from "@/components";
+import type { JSX } from "react";
 import { GeneralSection } from "./sections/GeneralSection";
 import { AppearanceSection } from "./sections/AppearanceSection";
 import { NudgesSection } from "./sections/NudgesSection";
@@ -8,6 +7,8 @@ import { IntegrationsSection } from "./sections/IntegrationsSection";
 import { ShortcutsSection } from "./sections/ShortcutsSection";
 import { FocusSprintsSection } from "./sections/FocusSprintsSection";
 import { DataExportSection } from "./sections/DataExportSection";
+import { TitleBar } from "@/components";
+import { rpc } from "@/lib/api";
 
 const SECTIONS = [
   "General",
