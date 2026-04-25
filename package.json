@@ -50,7 +50,7 @@
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.48.0",
     "@types/better-sqlite3": "^7.6.11",
-    "@types/node": "^22.7.4",
+    "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@typescript-eslint/eslint-plugin": "^8.8.0",
