@@ -56,9 +56,8 @@ export default [
       },
     },
     settings: {
-      'import-x/resolver': {
-        typescript: { project: ['tsconfig.node.json', 'tsconfig.web.json'] },
-      },
+      // import-x/no-unresolved is off, so no resolver is needed.
+      // Keeping the block empty to make it easy to add resolution later.
     },
     rules: {
       // Classic hook correctness rules only — this project doesn't use the React Compiler
