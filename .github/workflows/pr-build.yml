@@ -15,8 +15,8 @@ jobs:
     if: contains(github.event.pull_request.labels.*.name, 'build-preview')
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version: 20.x
           cache: npm
@@ -31,7 +31,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload portable artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: AttensiTimeTracker-pr-${{ github.event.pull_request.number }}-portable
           path: release/*portable.exe
