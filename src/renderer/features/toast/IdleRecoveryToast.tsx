@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { rpc, on } from "@/lib/api";
 import type { IdleNudgePayload } from "@shared/types";
+import { rpc, on } from "@/lib/api";
 
 const OPTIONS: {
   choice: "discard" | "meeting" | "keep" | "custom";

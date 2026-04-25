@@ -1,8 +1,8 @@
-import { toastKind } from "@/lib/api";
 import { IdleRecoveryToast } from "./IdleRecoveryToast";
 import { RetroFillToast } from "./RetroFillToast";
 import { SlackToast } from "./SlackToast";
 import { TeamsToast } from "./TeamsToast";
+import { toastKind } from "@/lib/api";
 
 export function ToastRoot() {
   const kind = toastKind();

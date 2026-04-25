@@ -1,7 +1,7 @@
+import type { EntryRow } from "@shared/types";
 import { useStore } from "@/store";
 import { startOfDay } from "@/lib/time";
 import { rpc } from "@/lib/api";
-import type { EntryRow } from "@shared/types";
 import { Ic } from "@/components";
 
 const HOUR_PX = 42;

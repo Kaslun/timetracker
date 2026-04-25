@@ -1,7 +1,7 @@
-import { useStore } from "@/store";
-import { SERVICES } from "@/lib/integrations";
 import { Toggle } from "../Toggle";
 import { SectionTitle } from "../Field";
+import { useStore } from "@/store";
+import { SERVICES } from "@/lib/integrations";
 
 export function IntegrationsSection() {
   const settings = useStore((s) => s.settings);

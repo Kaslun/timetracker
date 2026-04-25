@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import { rpc } from "@/lib/api";
 import { SHORTCUTS, type ShortcutKey, shortcutLabel } from "@shared/hotkeys";
+import { rpc } from "@/lib/api";
 
 const ORDER: ShortcutKey[] = [
   "toggleTimer",

@@ -1,8 +1,8 @@
-import { useStore } from "@/store";
 import type { NudgeSettings } from "@shared/types";
-import { Ic } from "@/components";
 import { Toggle } from "../Toggle";
 import { SectionHeading, SectionTitle } from "../Field";
+import { Ic } from "@/components";
+import { useStore } from "@/store";
 
 const NUDGE_ITEMS: ReadonlyArray<{
   key: keyof NudgeSettings;

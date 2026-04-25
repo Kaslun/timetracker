@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { selectLiveElapsed, selectLiveTodaySec, useStore } from "@/store";
-import { rpc, on } from "@/lib/api";
 import { PillShell } from "./PillShell";
 import { BrainDumpCard } from "./BrainDumpCard";
+import { selectLiveElapsed, selectLiveTodaySec, useStore } from "@/store";
+import { rpc, on } from "@/lib/api";
 
 export function PillRoot() {
   const current = useStore((s) => s.current);

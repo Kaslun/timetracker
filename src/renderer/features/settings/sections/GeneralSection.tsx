@@ -1,7 +1,7 @@
-import { useStore } from "@/store";
-import { rpc } from "@/lib/api";
 import { Toggle } from "../Toggle";
 import { Field, NumberInput, SectionTitle } from "../Field";
+import { useStore } from "@/store";
+import { rpc } from "@/lib/api";
 
 export function GeneralSection() {
   const settings = useStore((s) => s.settings);

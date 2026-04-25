@@ -1,5 +1,4 @@
 import type { CSSProperties } from "react";
-import { Ic } from "@/components";
 import {
   DASH_COLUMNS,
   DASH_PRESETS,
@@ -8,6 +7,7 @@ import {
   type Grouping,
   type PresetId,
 } from "./presets";
+import { Ic } from "@/components";
 
 const labelStyle: CSSProperties = {
   fontSize: 10,

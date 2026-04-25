@@ -1,8 +1,8 @@
-import { useStore } from "@/store";
-import { THEMES } from "@/themes/themes";
 import type { Density } from "@shared/types";
 import { ThemeSwatch } from "../ThemeSwatch";
 import { SectionHeading, SectionTitle } from "../Field";
+import { THEMES } from "@/themes/themes";
+import { useStore } from "@/store";
 
 const DENSITY_META: Record<Density, { label: string; sub: string }> = {
   compact: { label: "Compact", sub: "More info, less breathing room" },

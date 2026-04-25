@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { TaskWithProject } from "@shared/types";
 import { useStore } from "@/store";
 import { Ic, Swatch } from "@/components";
 import { rpc, on } from "@/lib/api";
 import { formatElapsed, formatHM } from "@/lib/time";
-import type { TaskWithProject } from "@shared/types";
 
 export function TasksTab() {
   const tasks = useStore((s) => s.tasks);

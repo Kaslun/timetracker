@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { rpc } from "@/lib/api";
-import { Ic } from "@/components";
 import { NameStep } from "./NameStep";
 import { ToolsStep } from "./ToolsStep";
+import { rpc } from "@/lib/api";
+import { Ic } from "@/components";
 
 const INITIAL_CONNECTED: Record<string, boolean> = {
   linear: true,

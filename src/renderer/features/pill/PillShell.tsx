@@ -1,8 +1,8 @@
-import { Dot, Ic, Swatch } from "@/components";
 import type { CurrentTaskView } from "@shared/types";
-import { formatElapsed, formatHM } from "@/lib/time";
 import { shortcutLabel } from "@shared/hotkeys";
 import { PillButton } from "./PillButton";
+import { formatElapsed, formatHM } from "@/lib/time";
+import { Dot, Ic, Swatch } from "@/components";
 
 export interface PillShellProps {
   current: CurrentTaskView;

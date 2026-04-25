@@ -1,5 +1,5 @@
-import { SERVICES } from "@/lib/integrations";
 import { ServiceTile } from "./ServiceTile";
+import { SERVICES } from "@/lib/integrations";
 
 export interface ToolsStepProps {
   connected: Record<string, boolean>;

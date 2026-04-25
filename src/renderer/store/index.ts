@@ -1,6 +1,4 @@
 import { create } from "zustand";
-import { rpc, on } from "@/lib/api";
-import { applyTheme } from "@/themes/themes";
 import type {
   Settings,
   CurrentTaskView,
@@ -12,6 +10,8 @@ import type {
   ThemeId,
 } from "@shared/types";
 import { DEFAULT_SETTINGS } from "@shared/constants";
+import { rpc, on } from "@/lib/api";
+import { applyTheme } from "@/themes/themes";
 
 interface AppState {
   ready: boolean;

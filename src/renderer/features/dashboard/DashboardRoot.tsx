@@ -1,8 +1,4 @@
 import { useMemo, useState } from "react";
-import { useStore } from "@/store";
-import { rpc } from "@/lib/api";
-import { Ic, TitleBar } from "@/components";
-import { startOfWeek, endOfWeek } from "@/lib/time";
 import {
   aggregateByProject,
   avgFocusMinutes,
@@ -22,6 +18,10 @@ import { WeeklyChart } from "./WeeklyChart";
 import { ProjectBreakdown } from "./ProjectBreakdown";
 import { EntriesTable } from "./EntriesTable";
 import { ExportPanel } from "./ExportPanel";
+import { startOfWeek, endOfWeek } from "@/lib/time";
+import { Ic, TitleBar } from "@/components";
+import { rpc } from "@/lib/api";
+import { useStore } from "@/store";
 
 const DAY_INDEX: Record<string, number> = {
   Mon: 0,

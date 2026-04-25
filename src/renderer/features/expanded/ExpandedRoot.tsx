@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
-import { useStore } from "@/store";
-import { rpc, on } from "@/lib/api";
-import { Ic, TitleBar } from "@/components";
 import { Cockpit } from "./Cockpit";
 import { Tabs, type TabId } from "./Tabs";
 import { TimelineTab } from "./TimelineTab";
 import { TasksTab } from "./TasksTab";
 import { InboxTab } from "./InboxTab";
 import { FillTab } from "./FillTab";
+import { Ic, TitleBar } from "@/components";
+import { rpc, on } from "@/lib/api";
+import { useStore } from "@/store";
 
 function fmtHeader(d: Date): string {
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];

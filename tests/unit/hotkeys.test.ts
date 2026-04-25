@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  detectPlatform,
   globalAccelerator,
   SHORTCUTS,
   shortcutLabel,
@@ -52,5 +53,30 @@ describe("globalAccelerator", () => {
   });
   it("keeps Ctrl on win/linux", () => {
     expect(globalAccelerator("expandWindow", "win")).toBe("Ctrl+E");
+  });
+});
+
+describe("detectPlatform", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("returns 'win' when navigator is undefined (Node environment)", () => {
+    expect(detectPlatform()).toBe("win");
+  });
+
+  it("returns 'mac' for a mac platform string", () => {
+    vi.stubGlobal("navigator", { platform: "MacIntel" });
+    expect(detectPlatform()).toBe("mac");
+  });
+
+  it("returns 'linux' for a linux platform string", () => {
+    vi.stubGlobal("navigator", { platform: "Linux x86_64" });
+    expect(detectPlatform()).toBe("linux");
+  });
+
+  it("returns 'win' for a Win32 platform string", () => {
+    vi.stubGlobal("navigator", { platform: "Win32" });
+    expect(detectPlatform()).toBe("win");
   });
 });

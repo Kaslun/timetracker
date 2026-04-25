@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { rpc, on } from "@/lib/api";
 import type { RetroNudgePayload, FillSuggestion } from "@shared/types";
+import { rpc, on } from "@/lib/api";
 
 export function RetroFillToast() {
   const [payload, setPayload] = useState<RetroNudgePayload | null>(null);

@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import type { EntryRow } from "@shared/types";
-import { isoDate } from "@/lib/time";
 import { DASH_COLUMNS, type ColId } from "./presets";
+import { isoDate } from "@/lib/time";
 
 const cellStyle: CSSProperties = {
   padding: "6px 12px",
