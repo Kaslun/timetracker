@@ -25,7 +25,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>11/11</span>
+                <span class='fraction'>13/13</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>11/11</span>
+                <span class='fraction'>13/13</span>
             </div>
         
             
@@ -167,7 +167,24 @@
 <a name='L102'></a><a href='#L102'>102</a>
 <a name='L103'></a><a href='#L103'>103</a>
 <a name='L104'></a><a href='#L104'>104</a>
-<a name='L105'></a><a href='#L105'>105</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L105'></a><a href='#L105'>105</a>
+<a name='L106'></a><a href='#L106'>106</a>
+<a name='L107'></a><a href='#L107'>107</a>
+<a name='L108'></a><a href='#L108'>108</a>
+<a name='L109'></a><a href='#L109'>109</a>
+<a name='L110'></a><a href='#L110'>110</a>
+<a name='L111'></a><a href='#L111'>111</a>
+<a name='L112'></a><a href='#L112'>112</a>
+<a name='L113'></a><a href='#L113'>113</a>
+<a name='L114'></a><a href='#L114'>114</a>
+<a name='L115'></a><a href='#L115'>115</a>
+<a name='L116'></a><a href='#L116'>116</a>
+<a name='L117'></a><a href='#L117'>117</a>
+<a name='L118'></a><a href='#L118'>118</a>
+<a name='L119'></a><a href='#L119'>119</a>
+<a name='L120'></a><a href='#L120'>120</a>
+<a name='L121'></a><a href='#L121'>121</a>
+<a name='L122'></a><a href='#L122'>122</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -238,6 +255,22 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -247,6 +280,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -325,9 +359,9 @@ export const TOAST_KINDS = [
 ] as const;
 export type ToastKind = (typeof TOAST_KINDS)[number];
 &nbsp;
-/** Integration IDs that have a dedicated panel. */
-export const INTEGRATION_IDS = ["linear"] as const;
-export type IntegrationId = (typeof INTEGRATION_IDS)[number];
+/** Integration IDs that have a dedicated full-screen detail window. */
+export const INTEGRATION_PANEL_IDS = ["linear"] as const;
+export type IntegrationPanelId = (typeof INTEGRATION_PANEL_IDS)[number];
 &nbsp;
 /** SQLite filename inside `app.getPath('userData')`. */
 export const DB_FILENAME = "timetracker.sqlite";
@@ -339,6 +373,22 @@ export const PILL = {
   dumpHeight: 180,
   /** Margin from the screen edge when picking the default position. */
   edgeMargin: 20,
+} as const;
+&nbsp;
+/**
+ * Expanded geometry. The pill window morphs to these dimensions when the
+ * user toggles the expanded view; we don't open a separate window. Anchoring
+ * is computed from the pill's current position with edge auto-detection.
+ */
+export const EXPANDED = {
+  width: 460,
+  height: 640,
+} as const;
+&nbsp;
+/** Stepped morph between pill and expanded sizes. ~16 frames over 250ms. */
+export const MORPH = {
+  frames: 16,
+  durationMs: 250,
 } as const;
 &nbsp;
 /** Idle / retroactive-fill thresholds (defaults; overridable via Settings). */
@@ -364,11 +414,12 @@ export const DEFAULT_SETTINGS: Settings = {
     hyperfocusAlerts: false,
     contextSwitchConfirm: false,
   },
-  quietHours: {
+  workHours: {
     days: ["Mon", "Tue", "Wed", "Thu", "Fri"],
-    from: "18:00",
-    to: "09:00",
+    from: "09:00",
+    to: "17:00",
   },
+  respectSystemDnd: false,
   integrationsConnected: {},
   pillPositions: {},
   pillLastDisplayId: null,
@@ -382,7 +433,7 @@ export const DEFAULT_SETTINGS: Settings = {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-25T22:27:08.861Z
+                at 2026-04-27T10:54:13.335Z
             </div>
         <script src="../prettify.js"></script>
         <script>

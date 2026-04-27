@@ -113,17 +113,67 @@ describe("matchInAppShortcut", () => {
 });
 
 describe("isEditableTarget", () => {
-  it("recognises shapes typed as input / textarea / contentEditable", () => {
-    // Reach for `globalThis` so the test still compiles in node env.
-    const fakeInput = Object.create(
-      (globalThis as { HTMLInputElement?: typeof HTMLInputElement })
-        .HTMLInputElement?.prototype ?? {},
-    ) as HTMLInputElement;
-    if ((globalThis as { HTMLInputElement?: unknown }).HTMLInputElement) {
-      expect(isEditableTarget(fakeInput)).toBe(true);
-    }
+  // Tests run in a node env where `HTMLElement` & co. are undefined, so the
+  // function falls through its existence-guard and returns false. To exercise
+  // the DOM-present branches (lines 135-139 in src/shared/hotkeys.ts) we stub
+  // those globals with minimal classes whose `instanceof` semantics are
+  // checkable.
+
+  class FakeHTMLElement {
+    isContentEditable = false;
+  }
+  class FakeHTMLInputElement extends FakeHTMLElement {}
+  class FakeHTMLTextAreaElement extends FakeHTMLElement {}
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("returns false on null and on plain objects", () => {
     expect(isEditableTarget(null)).toBe(false);
     expect(isEditableTarget({} as EventTarget)).toBe(false);
+  });
+
+  it("returns false when HTMLElement is unavailable (node env)", () => {
+    expect(
+      isEditableTarget({ tagName: "INPUT" } as unknown as EventTarget),
+    ).toBe(false);
+  });
+
+  it("recognises HTMLInputElement when the global is present", () => {
+    vi.stubGlobal("HTMLElement", FakeHTMLElement);
+    vi.stubGlobal("HTMLInputElement", FakeHTMLInputElement);
+    vi.stubGlobal("HTMLTextAreaElement", FakeHTMLTextAreaElement);
+    const target = new FakeHTMLInputElement() as unknown as EventTarget;
+    expect(isEditableTarget(target)).toBe(true);
+  });
+
+  it("recognises HTMLTextAreaElement when the global is present", () => {
+    vi.stubGlobal("HTMLElement", FakeHTMLElement);
+    vi.stubGlobal("HTMLInputElement", FakeHTMLInputElement);
+    vi.stubGlobal("HTMLTextAreaElement", FakeHTMLTextAreaElement);
+    const target = new FakeHTMLTextAreaElement() as unknown as EventTarget;
+    expect(isEditableTarget(target)).toBe(true);
+  });
+
+  it("recognises contentEditable elements", () => {
+    vi.stubGlobal("HTMLElement", FakeHTMLElement);
+    const div = new FakeHTMLElement();
+    div.isContentEditable = true;
+    expect(isEditableTarget(div as unknown as EventTarget)).toBe(true);
+  });
+
+  it("returns false for non-editable HTMLElements", () => {
+    vi.stubGlobal("HTMLElement", FakeHTMLElement);
+    const div = new FakeHTMLElement();
+    expect(isEditableTarget(div as unknown as EventTarget)).toBe(false);
+  });
+
+  it("returns false when target isn't an HTMLElement instance", () => {
+    vi.stubGlobal("HTMLElement", FakeHTMLElement);
+    expect(isEditableTarget({ foo: "bar" } as unknown as EventTarget)).toBe(
+      false,
+    );
   });
 });
 

@@ -78,6 +78,13 @@ describe("week boundaries", () => {
     expect(start.getDay()).toBe(1);
     expect(start.getDate()).toBe(20);
   });
+  it("startOfWeek normalises Sunday (getDay()===0) into the previous Monday", () => {
+    // Sunday 2026-04-26 → Monday 2026-04-20. This exercises the `|| 7`
+    // fallback branch in startOfWeek that the other case skips.
+    const start = startOfWeek(new Date("2026-04-26T12:00:00"));
+    expect(start.getDay()).toBe(1);
+    expect(start.getDate()).toBe(20);
+  });
   it("endOfWeek is the following Sunday end-of-day", () => {
     const end = endOfWeek(new Date("2026-04-25T12:00:00"));
     expect(end.getDay()).toBe(0);
