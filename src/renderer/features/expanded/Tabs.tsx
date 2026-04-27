@@ -4,6 +4,11 @@ import { Ic } from "@/components";
 import { DUR, SPRING } from "@/lib/motion";
 import { useMotionEnabled } from "@/lib/useMotionEnabled";
 
+/**
+ * `fill` is retained in the union for IPC back-compat (e.g.
+ * `window:setExpandedTab`) but it's no longer rendered as a tab — the
+ * Timeline supports drag-to-create, which replaces the Fill Gaps flow.
+ */
 export type TabId = "timeline" | "list" | "inbox" | "fill";
 
 interface Tab {
@@ -16,17 +21,10 @@ interface TabsProps {
   active: TabId;
   onTab: (id: TabId) => void;
   inboxCount: number;
-  fillCount: number;
   onDump: () => void;
 }
 
-export function Tabs({
-  active,
-  onTab,
-  inboxCount,
-  fillCount,
-  onDump,
-}: TabsProps) {
+export function Tabs({ active, onTab, inboxCount, onDump }: TabsProps) {
   const motionOn = useMotionEnabled();
   const tabs: Tab[] = [
     { id: "timeline", label: "Timeline" },
@@ -35,11 +33,6 @@ export function Tabs({
       id: "inbox",
       label: "Inbox",
       badge: inboxCount > 0 ? inboxCount : undefined,
-    },
-    {
-      id: "fill",
-      label: "Fill gaps",
-      badge: fillCount > 0 ? fillCount : undefined,
     },
   ];
   return (
@@ -98,11 +91,13 @@ export function Tabs({
       </LayoutGroup>
       <div style={{ flex: 1 }} />
       <button
-        className="btn ghost"
+        className="btn ghost icon"
         onClick={onDump}
-        style={{ alignSelf: "center", fontSize: 11 }}
+        title="Brain dump"
+        aria-label="Brain dump"
+        style={{ alignSelf: "center" }}
       >
-        <Ic.Brain s={11} /> Dump
+        <Ic.Brain s={13} />
       </button>
     </div>
   );
@@ -133,7 +128,7 @@ function CountBadge({ count }: { count: number }) {
       transition={{ duration: DUR.slow + 0.05, ease: "easeOut" }}
       style={{
         background: "var(--accent)",
-        color: "#fff",
+        color: "var(--on-accent)",
         fontSize: 9,
         fontWeight: 600,
         padding: "1px 5px",

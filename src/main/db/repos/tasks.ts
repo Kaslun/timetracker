@@ -9,6 +9,7 @@ interface Row {
   title: string;
   tag: string | null;
   archived_at: number | null;
+  completed_at: number | null;
   created_at: number;
 }
 
@@ -26,6 +27,7 @@ const map = (r: Row): Task => ({
   title: r.title,
   tag: r.tag,
   archivedAt: r.archived_at,
+  completedAt: r.completed_at,
   createdAt: r.created_at,
 });
 
@@ -51,6 +53,9 @@ export const tasks = {
   /**
    * Tasks joined with project + today total seconds + whether currently running.
    * `now` defaults to Date.now() but lets tests pin it.
+   *
+   * Completed tasks sort last so the active list stays focused, but they're
+   * still included so the UI can render them with strikethrough.
    */
   listWithStats(now = Date.now()): TaskWithProject[] {
     const dayStart = startOfDay(now);
@@ -75,7 +80,11 @@ export const tasks = {
       FROM tasks t
       JOIN projects p ON p.id = t.project_id
       WHERE t.archived_at IS NULL
-      ORDER BY active_entry_id IS NOT NULL DESC, today_sec DESC, t.created_at DESC
+      ORDER BY
+        t.completed_at IS NOT NULL,
+        active_entry_id IS NOT NULL DESC,
+        today_sec DESC,
+        t.created_at DESC
     `;
     return (db().prepare(sql).all({ now, dayStart }) as JoinedRow[]).map(
       mapJoined,
@@ -105,12 +114,13 @@ export const tasks = {
       title: input.title,
       tag: input.tag ?? null,
       archivedAt: null,
+      completedAt: null,
       createdAt: now,
     };
     db()
       .prepare(
-        `INSERT INTO tasks (id, project_id, ticket, title, tag, archived_at, created_at)
-         VALUES (@id, @projectId, @ticket, @title, @tag, @archivedAt, @createdAt)`,
+        `INSERT INTO tasks (id, project_id, ticket, title, tag, archived_at, completed_at, created_at)
+         VALUES (@id, @projectId, @ticket, @title, @tag, @archivedAt, @completedAt, @createdAt)`,
       )
       .run(row);
     return row;
@@ -120,5 +130,12 @@ export const tasks = {
     db()
       .prepare("UPDATE tasks SET archived_at = ? WHERE id = ?")
       .run(Date.now(), id);
+  },
+
+  /** Mark a task as complete (or reopen it). Completion is reversible. */
+  setCompleted(id: string, completed: boolean): void {
+    db()
+      .prepare("UPDATE tasks SET completed_at = ? WHERE id = ?")
+      .run(completed ? Date.now() : null, id);
   },
 };

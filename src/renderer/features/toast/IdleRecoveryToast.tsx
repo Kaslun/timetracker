@@ -63,7 +63,7 @@ export function IdleRecoveryToast() {
             height: 28,
             borderRadius: 14,
             background: "var(--accent)",
-            color: "#fff",
+            color: "var(--on-accent)",
             fontSize: 11,
             fontWeight: 700,
             display: "flex",

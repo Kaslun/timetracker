@@ -46,6 +46,16 @@ export function registerTimer(): void {
     tasks.archive(id);
     broadcastChanges({ tasks: true, entries: true });
   });
+  register("task:setCompleted", ({ id, completed }) => {
+    // If we're completing the currently-running task, pause the timer first
+    // so it doesn't keep accruing time on a "done" task.
+    if (completed) {
+      const cur = entries.open();
+      if (cur && cur.taskId === id) entries.pause();
+    }
+    tasks.setCompleted(id, completed);
+    broadcastChanges({ current: true, tasks: true, entries: true });
+  });
 
   register("entry:list", (input) => entries.list(input));
   register("entry:update", ({ id, patch }) => {

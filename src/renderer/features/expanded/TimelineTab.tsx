@@ -3,7 +3,6 @@ import type { EntryRow } from "@shared/types";
 import { useStore } from "@/store";
 import { startOfDay } from "@/lib/time";
 import { rpc } from "@/lib/api";
-import { EmptyState, Ic } from "@/components";
 
 const HOUR_PX = 42;
 const DAY_START_HOUR = 8;
@@ -100,7 +99,7 @@ function paletteFor(e: EntryRow): { bg: string; bd: string } {
   }
 }
 
-interface GapTarget {
+interface BlockTarget {
   startedAt: number;
   endedAt: number;
   topPx: number;
@@ -115,6 +114,13 @@ interface DragState {
   origEndedAt: number;
   draftStartedAt: number;
   draftEndedAt: number;
+}
+
+/** Active drag-to-create on empty timeline space. */
+interface CreateDragState {
+  anchorMs: number;
+  startedAt: number;
+  endedAt: number;
 }
 
 function snap(ms: number): number {
@@ -134,10 +140,11 @@ export function TimelineTab() {
   const tick = useStore((s) => s.tick);
   const dayStart = startOfDay(new Date(tick)).getTime();
   const blocks = buildBlocks(entries, dayStart, tick);
-  const hasAnyEntryToday = entries.some((e) => e.startedAt >= dayStart);
 
-  const [gapTarget, setGapTarget] = useState<GapTarget | null>(null);
+  const [createTarget, setCreateTarget] = useState<BlockTarget | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
+  const [createDrag, setCreateDrag] = useState<CreateDragState | null>(null);
+  const trackRef = useRef<HTMLDivElement | null>(null);
 
   const liveEntries: EntryRow[] = drag
     ? entries.map((e) =>
@@ -159,30 +166,82 @@ export function TimelineTab() {
   for (let h = DAY_START_HOUR; h <= DAY_END_HOUR; h++) hours.push(h);
   const nowH = (tick - dayStart) / 3_600_000;
 
-  const onClickGap = (block: Block): void => {
-    if (
-      block.kind !== "gap" ||
-      block.gapStartedAt == null ||
-      block.gapEndedAt == null
-    )
-      return;
-    setGapTarget({
-      startedAt: block.gapStartedAt,
-      endedAt: block.gapEndedAt,
-      topPx: block.topPx,
-      heightPx: block.heightPx,
+  /** Convert a Y coordinate within the track to a snapped wall-clock ms. */
+  const yToMs = (y: number): number => {
+    const baseMs = dayStart + DAY_START_HOUR * 3_600_000;
+    return snap(baseMs + y / PX_PER_MS);
+  };
+
+  const onTrackPointerDown = (e: React.PointerEvent<HTMLDivElement>): void => {
+    // Only handle the empty-track case — entry blocks stop propagation in
+    // their own pointerDown handler.
+    if (e.target !== e.currentTarget) return;
+    if (e.button !== 0) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const anchorMs = yToMs(y);
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setCreateDrag({
+      anchorMs,
+      startedAt: anchorMs,
+      endedAt: anchorMs + MIN_DURATION_MS,
     });
   };
 
-  const onSubmitGap = async (taskId: string): Promise<void> => {
-    if (!gapTarget) return;
+  useEffect(() => {
+    if (!createDrag) return;
+    const track = trackRef.current;
+    if (!track) return;
+    // Inlined yToMs to satisfy `react-hooks/exhaustive-deps` without adding
+    // an unstable function reference to the dependency array.
+    const localYToMs = (y: number): number => {
+      const baseMs = dayStart + DAY_START_HOUR * 3_600_000;
+      return snap(baseMs + y / PX_PER_MS);
+    };
+    const onMove = (ev: PointerEvent): void => {
+      const rect = track.getBoundingClientRect();
+      const y = ev.clientY - rect.top;
+      const cursorMs = localYToMs(y);
+      const startedAt = Math.min(createDrag.anchorMs, cursorMs);
+      const endedAt = Math.max(
+        createDrag.anchorMs + MIN_DURATION_MS,
+        cursorMs,
+        startedAt + MIN_DURATION_MS,
+      );
+      setCreateDrag({ ...createDrag, startedAt, endedAt });
+    };
+    const onUp = (): void => {
+      const ds = createDrag;
+      setCreateDrag(null);
+      if (!ds) return;
+      if (ds.endedAt - ds.startedAt < MIN_DURATION_MS) return;
+      const topPx =
+        ((ds.startedAt - dayStart) / 3_600_000 - DAY_START_HOUR) * HOUR_PX;
+      const heightPx = ((ds.endedAt - ds.startedAt) / 3_600_000) * HOUR_PX;
+      setCreateTarget({
+        startedAt: ds.startedAt,
+        endedAt: ds.endedAt,
+        topPx,
+        heightPx,
+      });
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, [createDrag, dayStart]);
+
+  const onSubmitCreate = async (taskId: string): Promise<void> => {
+    if (!createTarget) return;
     await rpc("entry:insert", {
       taskId,
-      startedAt: gapTarget.startedAt,
-      endedAt: gapTarget.endedAt,
-      source: "fill",
+      startedAt: createTarget.startedAt,
+      endedAt: createTarget.endedAt,
+      source: "manual",
     });
-    setGapTarget(null);
+    setCreateTarget(null);
   };
 
   const onPointerDownEntry = (
@@ -276,258 +335,263 @@ export function TimelineTab() {
         </span>
       </div>
 
-      {!hasAnyEntryToday ? (
-        <EmptyState
-          icon={<Ic.Timer s={20} />}
-          title="No entries yet"
-          hint="Press Space (or Ctrl+Space from anywhere) to start tracking the task you're on."
-        />
-      ) : (
+      <div
+        style={{
+          position: "relative",
+          display: "flex",
+          minHeight: hours.length * HOUR_PX,
+        }}
+      >
+        <div style={{ width: 40, display: "flex", flexDirection: "column" }}>
+          {hours.map((h) => (
+            <div
+              key={h}
+              className="mono"
+              style={{
+                height: HOUR_PX,
+                fontSize: 10,
+                color: "var(--ink-3)",
+                paddingTop: 1,
+              }}
+            >
+              {String(h).padStart(2, "0")}:00
+            </div>
+          ))}
+        </div>
         <div
+          ref={trackRef}
+          onPointerDown={onTrackPointerDown}
           style={{
+            flex: 1,
             position: "relative",
-            display: "flex",
-            minHeight: hours.length * HOUR_PX,
+            marginLeft: 4,
+            borderLeft: "1px solid var(--line)",
+            cursor: createDrag ? "ns-resize" : "crosshair",
+            touchAction: "none",
           }}
         >
-          <div style={{ width: 40, display: "flex", flexDirection: "column" }}>
-            {hours.map((h) => (
+          {hours.map((h, i) => (
+            <div
+              key={h}
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: i * HOUR_PX,
+                borderTop: i === 0 ? "none" : "1px dashed var(--line)",
+                pointerEvents: "none",
+              }}
+            />
+          ))}
+
+          {liveBlocks.map((b) => {
+            // Gap rendering removed — drag-to-create on empty space
+            // replaces the dedicated "Fill this gap" buttons.
+            if (b.kind === "gap") return null;
+            const e = b.entry;
+            if (!e) return null;
+            const palette = paletteFor(e);
+            const lenH = ((e.endedAt ?? tick) - e.startedAt) / 3_600_000;
+            const isActive = !e.endedAt;
+            const isDragging = drag?.entryId === e.id;
+            return (
               <div
-                key={h}
-                className="mono"
-                style={{
-                  height: HOUR_PX,
-                  fontSize: 10,
-                  color: "var(--ink-3)",
-                  paddingTop: 1,
-                }}
-              >
-                {String(h).padStart(2, "0")}:00
-              </div>
-            ))}
-          </div>
-          <div
-            style={{
-              flex: 1,
-              position: "relative",
-              marginLeft: 4,
-              borderLeft: "1px solid var(--line)",
-            }}
-          >
-            {hours.map((h, i) => (
-              <div
-                key={h}
+                key={`e-${e.id}`}
+                onPointerDown={(ev) => onPointerDownEntry(ev, e, "move")}
                 style={{
                   position: "absolute",
-                  left: 0,
-                  right: 0,
-                  top: i * HOUR_PX,
-                  borderTop: i === 0 ? "none" : "1px dashed var(--line)",
+                  left: 6,
+                  right: 6,
+                  top: b.topPx,
+                  height: b.heightPx,
+                  background: palette.bg,
+                  borderLeft: `3px solid ${palette.bd}`,
+                  borderRadius: 6,
+                  padding: "4px 8px",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: b.heightPx < 30 ? "center" : "flex-start",
+                  gap: 2,
+                  boxShadow: isDragging
+                    ? "0 0 0 2px var(--accent), var(--shadow-md)"
+                    : isActive
+                      ? "0 0 0 2px var(--accent)"
+                      : "none",
+                  cursor: isActive ? "default" : "grab",
+                  userSelect: "none",
+                  touchAction: "none",
+                  opacity: isDragging ? 0.92 : 1,
                 }}
-              />
-            ))}
-
-            {liveBlocks.map((b, i) => {
-              if (b.kind === "gap") {
-                return (
-                  <button
-                    key={`gap-${i}`}
-                    onClick={() => onClickGap(b)}
+              >
+                {!isActive && (
+                  <div
+                    onPointerDown={(ev) =>
+                      onPointerDownEntry(ev, e, "resize-start")
+                    }
+                    title="Drag to set start time"
                     style={{
                       position: "absolute",
-                      left: 6,
-                      right: 6,
-                      top: b.topPx,
-                      height: b.heightPx,
-                      border: "1px dashed var(--accent)",
-                      borderRadius: 6,
-                      color: "var(--accent)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      background:
-                        "color-mix(in oklab, var(--accent) 6%, transparent)",
-                      cursor: "pointer",
-                      fontSize: 10,
-                      fontWeight: 500,
+                      left: 0,
+                      right: 0,
+                      top: -3,
+                      height: 6,
+                      cursor: "ns-resize",
                     }}
-                    title={`Fill ${b.gapMinutes}m`}
-                  >
-                    <Ic.Plus s={10} />
-                    <span style={{ marginLeft: 4 }}>
-                      Fill this gap · {b.gapMinutes}m
-                    </span>
-                  </button>
-                );
-              }
-              const e = b.entry;
-              if (!e) return null;
-              const palette = paletteFor(e);
-              const lenH = ((e.endedAt ?? tick) - e.startedAt) / 3_600_000;
-              const isActive = !e.endedAt;
-              const isDragging = drag?.entryId === e.id;
-              return (
-                <div
-                  key={`e-${e.id}`}
-                  onPointerDown={(ev) => onPointerDownEntry(ev, e, "move")}
+                  />
+                )}
+                <span
                   style={{
-                    position: "absolute",
-                    left: 6,
-                    right: 6,
-                    top: b.topPx,
-                    height: b.heightPx,
-                    background: palette.bg,
-                    borderLeft: `3px solid ${palette.bd}`,
-                    borderRadius: 6,
-                    padding: "4px 8px",
-                    display: "flex",
-                    flexDirection: "column",
-                    justifyContent: b.heightPx < 30 ? "center" : "flex-start",
-                    gap: 2,
-                    boxShadow: isDragging
-                      ? "0 0 0 2px var(--accent), var(--shadow-md)"
-                      : isActive
-                        ? "0 0 0 2px var(--accent)"
-                        : "none",
-                    cursor: isActive ? "default" : "grab",
-                    userSelect: "none",
-                    touchAction: "none",
-                    opacity: isDragging ? 0.92 : 1,
+                    fontSize: 11,
+                    fontWeight: 500,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
                   }}
                 >
-                  {!isActive && (
-                    <div
-                      onPointerDown={(ev) =>
-                        onPointerDownEntry(ev, e, "resize-start")
-                      }
-                      title="Drag to set start time"
-                      style={{
-                        position: "absolute",
-                        left: 0,
-                        right: 0,
-                        top: -3,
-                        height: 6,
-                        cursor: "ns-resize",
-                      }}
-                    />
-                  )}
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 500,
-                      whiteSpace: "nowrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                    }}
-                  >
-                    {e.taskTitle}
+                  {e.taskTitle}
+                </span>
+                {b.heightPx > 36 && (
+                  <span className="mono num ink-3" style={{ fontSize: 9 }}>
+                    {Math.floor(lenH)}h{" "}
+                    {String(Math.round((lenH % 1) * 60)).padStart(2, "0")}m
+                    {isDragging ? (
+                      <>
+                        {" · "}
+                        {clockTimeShort(e.startedAt)}
+                        {" – "}
+                        {clockTimeShort(e.endedAt ?? tick)}
+                      </>
+                    ) : null}
                   </span>
-                  {b.heightPx > 36 && (
-                    <span className="mono num ink-3" style={{ fontSize: 9 }}>
-                      {Math.floor(lenH)}h{" "}
-                      {String(Math.round((lenH % 1) * 60)).padStart(2, "0")}m
-                      {isDragging ? (
-                        <>
-                          {" · "}
-                          {clockTimeShort(e.startedAt)}
-                          {" – "}
-                          {clockTimeShort(e.endedAt ?? tick)}
-                        </>
-                      ) : null}
-                    </span>
-                  )}
-                  {!isActive && (
-                    <div
-                      onPointerDown={(ev) =>
-                        onPointerDownEntry(ev, e, "resize-end")
-                      }
-                      title="Drag to set end time"
-                      style={{
-                        position: "absolute",
-                        left: 0,
-                        right: 0,
-                        bottom: -3,
-                        height: 6,
-                        cursor: "ns-resize",
-                      }}
-                    />
-                  )}
-                </div>
-              );
-            })}
+                )}
+                {!isActive && (
+                  <div
+                    onPointerDown={(ev) =>
+                      onPointerDownEntry(ev, e, "resize-end")
+                    }
+                    title="Drag to set end time"
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      right: 0,
+                      bottom: -3,
+                      height: 6,
+                      cursor: "ns-resize",
+                    }}
+                  />
+                )}
+              </div>
+            );
+          })}
 
-            {gapTarget ? (
-              <GapFillPopover
-                gap={gapTarget}
-                tasks={tasks}
-                onCancel={() => setGapTarget(null)}
-                onSubmit={onSubmitGap}
-              />
-            ) : null}
+          {createDrag ? (
+            <div
+              style={{
+                position: "absolute",
+                left: 6,
+                right: 6,
+                top:
+                  ((createDrag.startedAt - dayStart) / 3_600_000 -
+                    DAY_START_HOUR) *
+                  HOUR_PX,
+                height:
+                  ((createDrag.endedAt - createDrag.startedAt) / 3_600_000) *
+                  HOUR_PX,
+                border: "1.5px dashed var(--accent)",
+                borderRadius: 6,
+                background:
+                  "color-mix(in oklab, var(--accent) 8%, transparent)",
+                color: "var(--accent)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 10,
+                fontWeight: 600,
+                pointerEvents: "none",
+              }}
+            >
+              {clockTimeShort(createDrag.startedAt)} –{" "}
+              {clockTimeShort(createDrag.endedAt)}
+            </div>
+          ) : null}
 
-            {/* NOW indicator */}
-            {nowH >= DAY_START_HOUR && nowH <= DAY_END_HOUR && (
-              <div
+          {createTarget ? (
+            <BlockCreatePopover
+              block={createTarget}
+              tasks={tasks}
+              onCancel={() => setCreateTarget(null)}
+              onSubmit={onSubmitCreate}
+            />
+          ) : null}
+
+          {/* NOW indicator */}
+          {nowH >= DAY_START_HOUR && nowH <= DAY_END_HOUR && (
+            <div
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                top: (nowH - DAY_START_HOUR) * HOUR_PX,
+                borderTop: "2px solid var(--accent)",
+                zIndex: 3,
+              }}
+            >
+              <span
+                className="mono"
                 style={{
                   position: "absolute",
-                  left: 0,
-                  right: 0,
-                  top: (nowH - DAY_START_HOUR) * HOUR_PX,
-                  borderTop: "2px solid var(--accent)",
-                  zIndex: 3,
+                  left: -36,
+                  top: -8,
+                  fontSize: 9,
+                  color: "var(--accent)",
+                  fontWeight: 600,
+                  background: "var(--surface)",
+                  padding: "0 3px",
                 }}
               >
-                <span
-                  className="mono"
-                  style={{
-                    position: "absolute",
-                    left: -36,
-                    top: -8,
-                    fontSize: 9,
-                    color: "var(--accent)",
-                    fontWeight: 600,
-                    background: "var(--surface)",
-                    padding: "0 3px",
-                  }}
-                >
-                  NOW
-                </span>
-                <span
-                  className="now-dot"
-                  style={{
-                    position: "absolute",
-                    left: -5,
-                    top: -5,
-                    width: 9,
-                    height: 9,
-                    background: "var(--accent)",
-                    borderRadius: "50%",
-                    border: "2px solid var(--surface)",
-                  }}
-                />
-              </div>
-            )}
-          </div>
+                NOW
+              </span>
+              <span
+                className="now-dot"
+                style={{
+                  position: "absolute",
+                  left: -5,
+                  top: -5,
+                  width: 9,
+                  height: 9,
+                  background: "var(--accent)",
+                  borderRadius: "50%",
+                  border: "2px solid var(--surface)",
+                }}
+              />
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
 
-interface GapFillPopoverProps {
-  gap: GapTarget;
+interface BlockCreatePopoverProps {
+  block: BlockTarget;
   tasks: ReturnType<typeof useStore.getState>["tasks"];
   onCancel: () => void;
   onSubmit: (taskId: string) => Promise<void>;
 }
 
-function GapFillPopover({
-  gap,
+/**
+ * Inline picker shown after a drag-to-create on the timeline. Lets the user
+ * assign the new block to an existing task (creating a brand-new task is
+ * still done from the Tasks tab — keeps this surface small).
+ */
+function BlockCreatePopover({
+  block,
   tasks,
   onCancel,
   onSubmit,
-}: GapFillPopoverProps) {
-  const [taskId, setTaskId] = useState<string>(tasks[0]?.id ?? "");
+}: BlockCreatePopoverProps) {
+  const openTasks = tasks.filter((t) => !t.completedAt);
+  const [taskId, setTaskId] = useState<string>(openTasks[0]?.id ?? "");
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
 
@@ -540,7 +604,7 @@ function GapFillPopover({
     return () => document.removeEventListener("mousedown", onDoc);
   }, [onCancel]);
 
-  const minutes = Math.round((gap.endedAt - gap.startedAt) / 60_000);
+  const minutes = Math.round((block.endedAt - block.startedAt) / 60_000);
 
   const submit = async (): Promise<void> => {
     if (!taskId) return;
@@ -560,7 +624,7 @@ function GapFillPopover({
         position: "absolute",
         left: 12,
         right: 12,
-        top: gap.topPx + Math.min(gap.heightPx + 4, 4),
+        top: block.topPx + Math.min(block.heightPx + 4, 4),
         zIndex: 4,
         background: "var(--surface)",
         border: "1px solid var(--line-2)",
@@ -579,15 +643,15 @@ function GapFillPopover({
           justifyContent: "space-between",
         }}
       >
-        <span style={{ fontSize: 12, fontWeight: 600 }}>Fill this gap</span>
+        <span style={{ fontSize: 12, fontWeight: 600 }}>New block</span>
         <span className="mono ink-3" style={{ fontSize: 10 }}>
-          {clockTimeShort(gap.startedAt)} – {clockTimeShort(gap.endedAt)} ·{" "}
+          {clockTimeShort(block.startedAt)} – {clockTimeShort(block.endedAt)} ·{" "}
           {minutes}m
         </span>
       </div>
-      {tasks.length === 0 ? (
+      {openTasks.length === 0 ? (
         <div className="ink-3" style={{ fontSize: 11 }}>
-          No tasks yet — start tracking one or connect an integration first.
+          No tasks yet — open the Tasks tab to create one first.
         </div>
       ) : (
         <select
@@ -603,7 +667,7 @@ function GapFillPopover({
             outline: "none",
           }}
         >
-          {tasks.map((t) => (
+          {openTasks.map((t) => (
             <option
               key={t.id}
               value={t.id}
@@ -627,7 +691,7 @@ function GapFillPopover({
           onClick={() => void submit()}
           disabled={!taskId || busy}
         >
-          {busy ? "Logging…" : "Log this"}
+          {busy ? "Logging…" : "Create"}
         </button>
       </div>
     </div>

@@ -78,6 +78,19 @@ const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    version: 3,
+    up: (db) => {
+      // SQLite has no IF NOT EXISTS for ADD COLUMN — guard via PRAGMA so a
+      // re-run of an interrupted migration is harmless.
+      const cols = db.prepare("PRAGMA table_info(tasks)").all() as {
+        name: string;
+      }[];
+      if (!cols.some((c) => c.name === "completed_at")) {
+        db.exec(`ALTER TABLE tasks ADD COLUMN completed_at INTEGER`);
+      }
+    },
+  },
 ];
 
 export function runMigrations(db: Db): void {

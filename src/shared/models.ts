@@ -40,6 +40,7 @@ export const ZTask = z.object({
   title: z.string(),
   tag: z.string().nullable(),
   archivedAt: z.number().nullable(),
+  completedAt: z.number().nullable(),
   createdAt: z.number(),
 });
 

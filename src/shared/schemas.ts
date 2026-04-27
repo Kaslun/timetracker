@@ -101,6 +101,10 @@ export const CHANNELS = {
     ZTask,
   ],
   "task:archive": [z.object({ id: z.string() }), z.void()],
+  "task:setCompleted": [
+    z.object({ id: z.string(), completed: z.boolean() }),
+    z.void(),
+  ],
 
   "entry:list": [
     z.object({
@@ -233,6 +237,12 @@ export const CHANNELS = {
   "app:requestQuit": [z.void(), z.void()],
   "app:quitNow": [z.void(), z.void()],
   "app:cancelQuit": [z.void(), z.void()],
+  /**
+   * Renderer asks main to suspend or resume globally-registered shortcuts.
+   * Used while a text input/textarea has focus so accelerators like
+   * `Ctrl+Space` don't fire while the user is typing.
+   */
+  "shortcuts:setSuspended": [z.object({ suspended: z.boolean() }), z.void()],
   "eod:summary": [z.void(), ZEodSummary],
 
   "tag:list": [z.void(), z.array(ZCustomTag)],

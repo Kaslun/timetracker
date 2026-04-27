@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useStore, wireGlobalSubscriptions } from "@/store";
 import { windowKind } from "@/lib/api";
+import { useSuppressShortcutsOnInput } from "@/lib/useSuppressShortcutsOnInput";
 import { MorphRoot } from "@/features/morph/MorphRoot";
 import { ExpandedRoot } from "@/features/expanded/ExpandedRoot";
 import { DashboardRoot } from "@/features/dashboard/DashboardRoot";
@@ -16,6 +17,8 @@ const TRANSPARENT_WINDOWS = new Set(["pill", "toast", "cheatsheet", "eod"]);
 export function Bootstrap() {
   const ready = useStore((s) => s.ready);
   const kind = windowKind();
+
+  useSuppressShortcutsOnInput();
 
   useEffect(() => {
     if (TRANSPARENT_WINDOWS.has(kind)) {

@@ -149,7 +149,7 @@ export function PillShell({
           onClick={onBrainClick}
           title={`Brain dump (${shortcutLabel("brainDump")})`}
           background={dumpOpen ? "var(--accent)" : undefined}
-          color={dumpOpen ? "#fff" : "var(--ink-2)"}
+          color={dumpOpen ? "var(--on-accent)" : "var(--ink-2)"}
         >
           <Ic.Brain s={13} />
         </PillButton>

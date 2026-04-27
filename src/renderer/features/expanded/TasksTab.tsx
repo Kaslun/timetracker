@@ -15,7 +15,12 @@ export function TasksTab() {
 
   useEffect(() => {
     const off = on("expanded:focus-search", () => inputRef.current?.focus());
-    return off;
+    const onLocal = (): void => inputRef.current?.focus();
+    window.addEventListener("attensi:focus-search", onLocal);
+    return () => {
+      off();
+      window.removeEventListener("attensi:focus-search", onLocal);
+    };
   }, []);
 
   const todayLogged = tasks.reduce((acc, t) => acc + t.todaySec, 0);
@@ -32,11 +37,19 @@ export function TasksTab() {
   }, [query, tasks]);
 
   const start = (t: TaskWithProject) => async (): Promise<void> => {
+    if (t.completedAt) return; // Don't restart a completed task.
     if (t.active) {
       await useStore.getState().pause();
     } else {
       await useStore.getState().start(t.id);
     }
+  };
+
+  const toggleComplete = async (t: TaskWithProject): Promise<void> => {
+    await rpc("task:setCompleted", {
+      id: t.id,
+      completed: !t.completedAt,
+    });
   };
 
   const onCreate = async (): Promise<void> => {
@@ -133,61 +146,77 @@ export function TasksTab() {
           />
         ) : null}
 
-        {filtered.map((t) => (
-          <div
-            key={t.id}
-            onClick={() => void start(t)()}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              padding: "12px 16px",
-              borderLeft: t.active
-                ? "2px solid var(--accent)"
-                : "2px solid transparent",
-              background: t.active
-                ? "color-mix(in oklab, var(--accent) 5%, var(--surface))"
-                : "transparent",
-              cursor: "pointer",
-            }}
-          >
-            <Swatch color={t.projectColor} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div
-                style={{
-                  fontSize: 13,
-                  fontWeight: t.active ? 500 : 400,
-                  lineHeight: 1.3,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {t.title}
-              </div>
-              <div
-                className="mono ink-3"
-                style={{ fontSize: 10, marginTop: 2 }}
-              >
-                {t.ticket ?? "—"} · {t.projectName}
-              </div>
-            </div>
-            {t.tag ? <span className="chip">{t.tag}</span> : null}
-            <span
-              className="mono num"
+        {filtered.map((t) => {
+          const isDone = !!t.completedAt;
+          return (
+            <div
+              key={t.id}
+              onClick={() => void start(t)()}
               style={{
-                fontSize: 12,
-                color: t.active ? "var(--accent)" : "var(--ink-2)",
-                fontWeight: t.active ? 600 : 500,
-                minWidth: 56,
-                textAlign: "right",
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "12px 16px",
+                borderLeft: t.active
+                  ? "2px solid var(--accent)"
+                  : "2px solid transparent",
+                background: t.active
+                  ? "color-mix(in oklab, var(--accent) 5%, var(--surface))"
+                  : "transparent",
+                cursor: isDone ? "default" : "pointer",
+                opacity: isDone ? 0.55 : 1,
               }}
             >
-              {formatElapsed(t.todaySec)}
-            </span>
-            {t.active ? <Ic.Pause s={11} /> : <Ic.Play s={11} />}
-          </div>
-        ))}
+              <CompletionCheck
+                done={isDone}
+                onToggle={() => void toggleComplete(t)}
+              />
+              <Swatch color={t.projectColor} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontWeight: t.active ? 500 : 400,
+                    lineHeight: 1.3,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    textDecoration: isDone ? "line-through" : "none",
+                    color: isDone ? "var(--ink-3)" : undefined,
+                  }}
+                >
+                  {t.title}
+                </div>
+                <div
+                  className="mono ink-3"
+                  style={{ fontSize: 10, marginTop: 2 }}
+                >
+                  {t.ticket ?? "—"} · {t.projectName}
+                </div>
+              </div>
+              {t.tag ? <span className="chip">{t.tag}</span> : null}
+              <span
+                className="mono num"
+                style={{
+                  fontSize: 12,
+                  color: t.active ? "var(--accent)" : "var(--ink-2)",
+                  fontWeight: t.active ? 600 : 500,
+                  minWidth: 56,
+                  textAlign: "right",
+                }}
+              >
+                {formatElapsed(t.todaySec)}
+              </span>
+              {!isDone ? (
+                t.active ? (
+                  <Ic.Pause s={11} />
+                ) : (
+                  <Ic.Play s={11} />
+                )
+              ) : null}
+            </div>
+          );
+        })}
 
         {showCreateRow && (
           <div
@@ -252,5 +281,47 @@ export function TasksTab() {
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Round checkbox sized for the tasks list. Theme-aware (uses `--accent`
+ * tokens). Stops propagation so toggling completion doesn't also start the
+ * task via the row's onClick.
+ */
+function CompletionCheck({
+  done,
+  onToggle,
+}: {
+  done: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={done}
+      title={done ? "Reopen task" : "Mark complete"}
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle();
+      }}
+      style={{
+        width: 16,
+        height: 16,
+        borderRadius: "50%",
+        flexShrink: 0,
+        border: `1.5px solid ${done ? "var(--accent)" : "var(--ink-4)"}`,
+        background: done ? "var(--accent)" : "transparent",
+        color: done ? "var(--on-accent, #fff)" : "transparent",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 0,
+        cursor: "pointer",
+      }}
+    >
+      <Ic.Check s={9} />
+    </button>
   );
 }

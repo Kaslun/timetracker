@@ -4,7 +4,6 @@ import { Tabs, type TabId } from "./Tabs";
 import { TimelineTab } from "./TimelineTab";
 import { TasksTab } from "./TasksTab";
 import { InboxTab } from "./InboxTab";
-import { FillTab } from "./FillTab";
 import { Ic, TitleBar } from "@/components";
 import { rpc, on } from "@/lib/api";
 import { useStore } from "@/store";
@@ -32,7 +31,6 @@ function fmtHeader(d: Date): string {
 
 export function ExpandedRoot() {
   const captures = useStore((s) => s.captures);
-  const fillSuggestions = useStore((s) => s.fillSuggestions);
   const [tab, setTab] = useState<TabId>("timeline");
 
   useEffect(() => {
@@ -42,9 +40,6 @@ export function ExpandedRoot() {
     return off;
   }, []);
 
-  // In-app, single-key shortcuts. See `useInAppShortcuts` for the rules.
-  // Esc and Ctrl+1..4 stay as native handlers because they don't fit the
-  // single-key/no-modifier scheme.
   useInAppShortcuts(
     useMemo(
       () => ({
@@ -67,8 +62,8 @@ export function ExpandedRoot() {
         if (e.key === "Escape") (e.target as HTMLElement).blur();
         return;
       }
-      if ((e.ctrlKey || e.metaKey) && /^[1-4]$/.test(e.key)) {
-        const map: TabId[] = ["timeline", "list", "inbox", "fill"];
+      if ((e.ctrlKey || e.metaKey) && /^[1-3]$/.test(e.key)) {
+        const map: TabId[] = ["timeline", "list", "inbox"];
         const idx = parseInt(e.key, 10) - 1;
         e.preventDefault();
         setTab(map[idx]);
@@ -84,10 +79,19 @@ export function ExpandedRoot() {
 
   const onSearch = (): void => {
     setTab("list");
+    // Defer to the next tick so the TasksTab search input is mounted before
+    // we focus it. TasksTab subscribes to this event via `window.addEventListener`.
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent("attensi:focus-search"));
+    }, 0);
   };
 
   const onSettings = (): void => {
     void rpc("window:openSettings");
+  };
+
+  const onCollapse = (): void => {
+    void rpc("window:toggleExpanded");
   };
 
   const onDump = (): void => {
@@ -95,7 +99,6 @@ export function ExpandedRoot() {
   };
 
   const inboxCount = captures.filter((c) => !c.tag).length;
-  const fillCount = fillSuggestions.length;
 
   return (
     <div
@@ -105,24 +108,11 @@ export function ExpandedRoot() {
       <TitleBar
         title={fmtHeader(new Date())}
         onClose={() => void rpc("window:toggleExpanded")}
-        right={
-          <>
-            <button
-              className="btn ghost icon"
-              title="Search"
-              onClick={onSearch}
-            >
-              <Ic.Search s={13} />
-            </button>
-            <button
-              className="btn ghost icon"
-              title="Settings"
-              onClick={onSettings}
-            >
-              <Ic.Settings s={13} />
-            </button>
-          </>
-        }
+      />
+      <SubHeader
+        onSearch={onSearch}
+        onSettings={onSettings}
+        onCollapse={onCollapse}
       />
       <UpdateBanner />
       <Cockpit />
@@ -130,13 +120,68 @@ export function ExpandedRoot() {
         active={tab}
         onTab={setTab}
         inboxCount={inboxCount}
-        fillCount={fillCount}
         onDump={onDump}
       />
       {tab === "timeline" && <TimelineTab />}
       {tab === "list" && <TasksTab />}
       {tab === "inbox" && <InboxTab />}
-      {tab === "fill" && <FillTab />}
+      {/* `fill` tab is intentionally not rendered — see Tabs.tsx note. */}
+    </div>
+  );
+}
+
+interface SubHeaderProps {
+  onSearch: () => void;
+  onSettings: () => void;
+  onCollapse: () => void;
+}
+
+/**
+ * Sub-header strip below the OS title bar.
+ *
+ * Hosts search, settings and the "back to pill" chevron — lifted out of the
+ * title bar so the OS controls (close/min/max) sit alone. Search jumps to
+ * the Tasks tab and focuses its in-tab search field, where the create-task
+ * affordance lives.
+ */
+function SubHeader({ onSearch, onSettings, onCollapse }: SubHeaderProps) {
+  return (
+    <div
+      className="no-drag"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 4,
+        padding: "6px 10px",
+        borderBottom: "1px solid var(--line)",
+        background: "var(--bg-2)",
+      }}
+    >
+      <button
+        className="btn ghost icon"
+        title="Search tasks"
+        aria-label="Search tasks"
+        onClick={onSearch}
+      >
+        <Ic.Search s={13} />
+      </button>
+      <div style={{ flex: 1 }} />
+      <button
+        className="btn ghost icon"
+        title="Settings"
+        aria-label="Settings"
+        onClick={onSettings}
+      >
+        <Ic.Settings s={13} />
+      </button>
+      <button
+        className="btn ghost icon"
+        title="Collapse to pill"
+        aria-label="Collapse to pill"
+        onClick={onCollapse}
+      >
+        <Ic.Chevron dir="up" s={13} />
+      </button>
     </div>
   );
 }

@@ -66,6 +66,7 @@ export class LinearProvider extends BaseProvider {
         title: "Fix iOS build crash on cold start",
         tag: "dev",
         archivedAt: null,
+        completedAt: null,
         createdAt: now,
       },
       {
@@ -75,6 +76,7 @@ export class LinearProvider extends BaseProvider {
         title: "Migrate auth tokens to keychain",
         tag: "dev",
         archivedAt: null,
+        completedAt: null,
         createdAt: now,
       },
     ];

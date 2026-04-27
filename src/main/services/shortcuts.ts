@@ -58,8 +58,11 @@ const BINDINGS: Binding[] = [
   },
 ];
 
+let suspended = false;
+
 export function registerGlobalShortcuts(): void {
   unregisterGlobalShortcuts();
+  if (suspended) return;
   for (const b of BINDINGS) {
     const sc = SHORTCUTS[b.key];
     if (sc.scope !== "global") continue;
@@ -70,6 +73,19 @@ export function registerGlobalShortcuts(): void {
 
 export function unregisterGlobalShortcuts(): void {
   globalShortcut.unregisterAll();
+}
+
+/**
+ * Toggle whether global shortcuts are registered with the OS.
+ *
+ * The renderer calls this on input focus/blur so accelerators like Ctrl+Space
+ * don't fire while the user is typing. Calls are idempotent.
+ */
+export function setShortcutsSuspended(next: boolean): void {
+  if (suspended === next) return;
+  suspended = next;
+  if (next) unregisterGlobalShortcuts();
+  else registerGlobalShortcuts();
 }
 
 /** Used by the tray + menu so they show the same accelerator strings. */

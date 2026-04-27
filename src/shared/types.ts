@@ -26,6 +26,8 @@ export interface Task {
   title: string;
   tag: string | null;
   archivedAt: number | null;
+  /** Wall-clock ms when the user marked the task done; null while open. */
+  completedAt: number | null;
   createdAt: number;
 }
 
