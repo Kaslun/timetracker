@@ -66,9 +66,16 @@ const ZUpdateInfo = z.object({
   latest: z.string().nullable(),
   hasUpdate: z.boolean(),
   url: z.string().nullable(),
+  /** Direct download URL of the NSIS `*-setup.exe` asset, when available. */
+  installerUrl: z.string().nullable(),
   notes: z.string().nullable(),
   checkedAt: z.number(),
   error: z.string().nullable(),
+  /** Whether the running build can safely download + run the installer. */
+  canAutoInstall: z.boolean(),
+  /** 0..1 download progress, or null when not downloading. */
+  downloadProgress: z.number().nullable(),
+  downloaded: z.boolean(),
 });
 
 export const ZCustomTag = z.object({
@@ -251,6 +258,12 @@ export const CHANNELS = {
 
   "update:check": [z.void(), ZUpdateInfo],
   "update:open": [z.void(), z.void()],
+  /**
+   * Download the latest installer (with progress broadcast on
+   * `update:state`) and launch it. The app quits once the installer is
+   * spawned. Falls back to `update:open` when `canAutoInstall` is false.
+   */
+  "update:install": [z.void(), z.void()],
 } as const;
 
 export type ChannelName = keyof typeof CHANNELS;
@@ -282,6 +295,8 @@ export const EVENTS = {
   "demo:toast": z.object({ kind: ZToastKind }),
   "tags:changed": z.array(ZCustomTag),
   "update:available": ZUpdateInfo,
+  /** Download progress / state changes during `update:install`. */
+  "update:state": ZUpdateInfo,
 } as const;
 
 export type EventName = keyof typeof EVENTS;

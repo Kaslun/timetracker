@@ -7,6 +7,10 @@
     "name": "Attensi"
   },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Kaslun/timetracker.git"
+  },
   "type": "module",
   "scripts": {
     "dev": "electron-vite dev",

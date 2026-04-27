@@ -1,0 +1,25 @@
+{
+  // Stop Cursor's file watcher from holding handles to build output, so
+  // electron-builder can overwrite `release/` without "file in use" errors.
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/**": true,
+    "**/out/**": true,
+    "**/release/**": true,
+    "**/dist/**": true,
+    "**/coverage/**": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/out": true,
+    "**/release": true,
+    "**/dist": true,
+    "**/coverage": true,
+    "**/*.lock": true
+  },
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true
+  }
+}

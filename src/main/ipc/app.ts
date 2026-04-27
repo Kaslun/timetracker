@@ -5,7 +5,11 @@ import {
   requestQuit,
 } from "../services/quit";
 import { setShortcutsSuspended } from "../services/shortcuts";
-import { checkForUpdate, openLatestRelease } from "../services/updater";
+import {
+  checkForUpdate,
+  installUpdate,
+  openLatestRelease,
+} from "../services/updater";
 import { register } from "./handlers";
 
 export function registerApp(): void {
@@ -23,6 +27,9 @@ export function registerApp(): void {
   register("update:check", async () => checkForUpdate());
   register("update:open", () => {
     openLatestRelease();
+  });
+  register("update:install", async () => {
+    await installUpdate();
   });
 
   register("shortcuts:setSuspended", ({ suspended }) => {

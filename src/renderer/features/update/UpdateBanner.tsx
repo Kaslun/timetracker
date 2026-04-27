@@ -7,9 +7,13 @@ interface UpdateInfo {
   latest: string | null;
   hasUpdate: boolean;
   url: string | null;
+  installerUrl: string | null;
   notes: string | null;
   checkedAt: number;
   error: string | null;
+  canAutoInstall: boolean;
+  downloadProgress: number | null;
+  downloaded: boolean;
 }
 
 const DISMISS_KEY = "attensi.update.dismissed";
@@ -32,18 +36,30 @@ export function UpdateBanner() {
         setInfo(u);
       }
     });
-    const off = on("update:available", (u) => {
+    const offAvail = on("update:available", (u) => {
       setInfo(u);
       const dismissed = localStorage.getItem(DISMISS_KEY);
       if (dismissed !== u.latest) setHidden(false);
     });
-    return off;
+    const offState = on("update:state", (u) => setInfo(u));
+    return () => {
+      offAvail();
+      offState();
+    };
   }, []);
 
   if (!info || !info.hasUpdate || hidden) return null;
 
-  const onDownload = (): void => {
-    void rpc("update:open");
+  const isDownloading = info.downloadProgress !== null && !info.downloaded;
+  const updateLabel = isDownloading
+    ? `Downloading… ${Math.round((info.downloadProgress ?? 0) * 100)}%`
+    : info.canAutoInstall
+      ? "Update"
+      : "Open release";
+
+  const onUpdate = (): void => {
+    if (info.canAutoInstall) void rpc("update:install");
+    else void rpc("update:open");
   };
 
   const onDismiss = (): void => {
@@ -71,13 +87,18 @@ export function UpdateBanner() {
         </span>{" "}
         is available <span className="ink-3">(you have {info.current})</span>
       </span>
-      <button className="btn accent" onClick={onDownload}>
-        Open release
+      <button
+        className="btn accent"
+        onClick={onUpdate}
+        disabled={isDownloading}
+      >
+        {updateLabel}
       </button>
       <button
         className="btn ghost icon"
         title="Dismiss for this version"
         onClick={onDismiss}
+        disabled={isDownloading}
       >
         <Ic.Close s={12} />
       </button>

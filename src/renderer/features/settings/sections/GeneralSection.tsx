@@ -1,17 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Toggle } from "../Toggle";
 import { Field, NumberInput, SectionHeading, SectionTitle } from "../Field";
 import { useStore } from "@/store";
-import { rpc } from "@/lib/api";
+import { on, rpc } from "@/lib/api";
 
 interface UpdateInfo {
   current: string;
   latest: string | null;
   hasUpdate: boolean;
   url: string | null;
+  installerUrl: string | null;
   notes: string | null;
   checkedAt: number;
   error: string | null;
+  canAutoInstall: boolean;
+  downloadProgress: number | null;
+  downloaded: boolean;
 }
 
 export function GeneralSection() {
@@ -20,6 +24,9 @@ export function GeneralSection() {
   const [update, setUpdate] = useState<UpdateInfo | null>(null);
   const [checking, setChecking] = useState(false);
 
+  // Subscribe to download progress so the button reflects current state.
+  useEffect(() => on("update:state", (u) => setUpdate(u)), []);
+
   const onCheck = async (): Promise<void> => {
     setChecking(true);
     const u = await rpc("update:check");
@@ -27,9 +34,20 @@ export function GeneralSection() {
     setChecking(false);
   };
 
-  const onOpen = (): void => {
-    void rpc("update:open");
+  const onUpdate = (): void => {
+    if (update?.canAutoInstall) void rpc("update:install");
+    else void rpc("update:open");
   };
+
+  const isDownloading =
+    update?.downloadProgress !== null &&
+    update?.downloadProgress !== undefined &&
+    !update?.downloaded;
+  const updateLabel = isDownloading
+    ? `Downloading… ${Math.round((update?.downloadProgress ?? 0) * 100)}%`
+    : update?.canAutoInstall
+      ? "Update"
+      : "Open release";
 
   return (
     <>
@@ -121,13 +139,17 @@ export function GeneralSection() {
           <button
             className="btn"
             onClick={() => void onCheck()}
-            disabled={checking}
+            disabled={checking || isDownloading}
           >
             {checking ? "Checking…" : "Check now"}
           </button>
           {update?.hasUpdate ? (
-            <button className="btn accent" onClick={onOpen}>
-              Open release
+            <button
+              className="btn accent"
+              onClick={onUpdate}
+              disabled={isDownloading}
+            >
+              {updateLabel}
             </button>
           ) : null}
         </div>
