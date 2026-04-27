@@ -7,6 +7,7 @@ import type {
   Capture,
   Project,
   FillSuggestion,
+  IntegrationState,
   ThemeId,
 } from "@shared/types";
 import { DEFAULT_SETTINGS } from "@shared/constants";
@@ -23,6 +24,9 @@ interface AppState {
   settings: Settings;
   projects: Project[];
   fillSuggestions: FillSuggestion[];
+  integrations: IntegrationState[];
+  /** Active morph mode of the pill window. Driven by main via `pill:mode`. */
+  pillMode: "pill" | "expanded";
   /** millis since unix epoch — bumped every second so derived elapsed re-renders. */
   tick: number;
 
@@ -57,6 +61,8 @@ export const useStore = create<AppState>((set, get) => ({
   settings: DEFAULT_SETTINGS,
   projects: [],
   fillSuggestions: [],
+  integrations: [],
+  pillMode: "pill",
   tick: Date.now(),
 
   async bootstrap() {
@@ -71,6 +77,7 @@ export const useStore = create<AppState>((set, get) => ({
       settings: data.settings,
       projects: data.projects,
       fillSuggestions: data.fillSuggestions,
+      integrations: data.integrations,
     });
     applyTheme(data.settings.theme);
   },
@@ -113,6 +120,8 @@ export function wireGlobalSubscriptions(): void {
     useStore.setState({ settings: s });
     applyTheme(s.theme);
   });
+  on("integrations:changed", (xs) => useStore.setState({ integrations: xs }));
+  on("pill:mode", ({ mode }) => useStore.setState({ pillMode: mode }));
 
   if (tickHandle) clearInterval(tickHandle);
   tickHandle = setInterval(() => {

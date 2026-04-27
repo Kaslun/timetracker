@@ -1,4 +1,4 @@
-import { Ic, Ring, Swatch } from "@/components";
+import { DigitRoll, PlayPauseIcon, Ring, Swatch } from "@/components";
 import { selectLiveElapsed, selectLiveTodaySec, useStore } from "@/store";
 import { formatElapsed, formatHM } from "@/lib/time";
 import { rpc } from "@/lib/api";
@@ -80,12 +80,11 @@ export function Cockpit() {
           {current.title}
         </div>
         <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
-          <span
+          <DigitRoll
+            value={formatElapsed(elapsedSec)}
             className="mono num"
             style={{ fontSize: 11, color: "var(--ink-2)" }}
-          >
-            {formatElapsed(elapsedSec)}
-          </span>
+          />
           <span className="mono num ink-3" style={{ fontSize: 11 }}>
             today {formatHM(todaySec)}
           </span>
@@ -99,7 +98,7 @@ export function Cockpit() {
           current.running ? "Pause" : current.taskId ? "Resume" : "Pick a task"
         }
       >
-        {current.running ? <Ic.Pause s={14} /> : <Ic.Play s={14} />}
+        <PlayPauseIcon running={current.running} size={14} />
       </button>
     </div>
   );

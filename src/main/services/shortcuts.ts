@@ -1,10 +1,6 @@
 import { globalShortcut } from "electron";
 import { SHORTCUTS, type ShortcutKey } from "@shared/hotkeys";
-import {
-  ensureCheatsheet,
-  ensurePill,
-  toggleExpanded,
-} from "../windows/manager";
+import { ensurePill } from "../windows/manager";
 import { broadcast } from "../ipc/events";
 import { entries } from "../db/repos/entries";
 import { tasks } from "../db/repos/tasks";
@@ -45,19 +41,7 @@ const BINDINGS: Binding[] = [
     },
   },
   {
-    key: "switchTask",
-    handler: () => {
-      toggleExpanded({ alwaysShow: true });
-      broadcast("expanded:tab", "list");
-      broadcast("expanded:focus-search", undefined);
-    },
-  },
-  {
-    key: "expandWindow",
-    handler: () => toggleExpanded(),
-  },
-  {
-    key: "brainDump",
+    key: "brainDumpGlobal",
     handler: () => {
       const pill = ensurePill();
       if (!pill.isVisible()) pill.show();
@@ -65,18 +49,15 @@ const BINDINGS: Binding[] = [
       broadcast("pill:focus-dump", undefined);
     },
   },
-  {
-    key: "cheatsheet",
-    handler: () => ensureCheatsheet(),
-  },
 ];
 
 export function registerGlobalShortcuts(): void {
   unregisterGlobalShortcuts();
   for (const b of BINDINGS) {
-    const accel = SHORTCUTS[b.key].win;
-    const ok = globalShortcut.register(accel, b.handler);
-    if (!ok) log.warn(`failed to register ${accel} (${b.key})`);
+    const sc = SHORTCUTS[b.key];
+    if (sc.scope !== "global") continue;
+    const ok = globalShortcut.register(sc.win, b.handler);
+    if (!ok) log.warn(`failed to register ${sc.win} (${b.key})`);
   }
 }
 

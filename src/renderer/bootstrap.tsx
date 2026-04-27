@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useStore, wireGlobalSubscriptions } from "@/store";
 import { windowKind } from "@/lib/api";
-import { PillRoot } from "@/features/pill/PillRoot";
+import { MorphRoot } from "@/features/morph/MorphRoot";
 import { ExpandedRoot } from "@/features/expanded/ExpandedRoot";
 import { DashboardRoot } from "@/features/dashboard/DashboardRoot";
 import { IntroRoot } from "@/features/intro/IntroRoot";
@@ -35,8 +35,10 @@ export function Bootstrap() {
 
   switch (kind) {
     case "pill":
-      return <PillRoot />;
+      return <MorphRoot />;
     case "expanded":
+      // Legacy: the standalone expanded window is no longer opened, but the
+      // route stays so any existing links resolve to a usable surface.
       return <ExpandedRoot />;
     case "dashboard":
       return <DashboardRoot />;

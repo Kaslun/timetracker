@@ -4,6 +4,7 @@ import type { Settings } from "@shared/types";
 import { settings as settingsRepo } from "../db/repos/settings";
 import { createWindow } from "./factory";
 import { state } from "./registry";
+import { isExpanded } from "./morph";
 
 function pickPillPosition(): { x: number; y: number; displayId: string } {
   const cfg = settingsRepo.getAll();
@@ -71,6 +72,9 @@ export function ensurePill(): BrowserWindow {
 export function pillResize(next: "collapsed" | "dump"): void {
   const win = state.pill;
   if (!win || win.isDestroyed()) return;
+  // The brain-dump grow only applies in pill mode. In expanded mode the window
+  // is already 460×640 and the brain dump is just inline content.
+  if (isExpanded()) return;
   const target = next === "dump" ? PILL.dumpHeight : PILL.collapsedHeight;
   const [w] = win.getSize();
   win.setSize(w, target, true);

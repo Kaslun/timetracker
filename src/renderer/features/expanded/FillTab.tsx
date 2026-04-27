@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useStore } from "@/store";
 import { rpc } from "@/lib/api";
 import { formatHM } from "@/lib/time";
+import { EmptyState, Ic } from "@/components";
 
 export function FillTab() {
   const initialSuggestions = useStore((s) => s.fillSuggestions);
@@ -131,7 +132,7 @@ export function FillTab() {
       <div className="scroll" style={{ flex: 1, overflow: "auto" }}>
         <div
           style={{
-            padding: "10px 14px 4px",
+            padding: "12px 16px 6px",
             display: "flex",
             alignItems: "baseline",
             justifyContent: "space-between",
@@ -153,6 +154,21 @@ export function FillTab() {
             Drag → timeline
           </span>
         </div>
+        {initialSuggestions.length === 0 ? (
+          <EmptyState
+            icon={<Ic.Plus s={20} />}
+            title="Nothing to fill"
+            hint="Connect Linear, Slack or Google Calendar in Settings to surface suggestions for unlogged time."
+            action={
+              <button
+                className="btn"
+                onClick={() => void rpc("window:openSettings")}
+              >
+                Open Settings
+              </button>
+            }
+          />
+        ) : null}
         {initialSuggestions.map((s) => (
           <label
             key={s.id}
@@ -160,7 +176,7 @@ export function FillTab() {
               display: "flex",
               alignItems: "center",
               gap: 10,
-              padding: "10px 14px",
+              padding: "12px 16px",
               borderBottom: "1px solid var(--line)",
               background: picked[s.id]
                 ? "color-mix(in oklab, var(--accent) 4%, transparent)"
@@ -236,7 +252,7 @@ export function FillTab() {
       </div>
       <div
         style={{
-          padding: "10px 14px",
+          padding: "12px 16px",
           borderTop: "1px solid var(--line)",
           display: "flex",
           gap: 8,

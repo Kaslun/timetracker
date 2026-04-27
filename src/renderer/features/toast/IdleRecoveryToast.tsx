@@ -48,7 +48,7 @@ export function IdleRecoveryToast() {
         style={{
           width: "100%",
           height: "100%",
-          padding: "16px 16px 14px",
+          padding: "20px 20px 16px",
           position: "relative",
         }}
       >
@@ -90,8 +90,8 @@ export function IdleRecoveryToast() {
           className="ink-2"
           style={{
             fontSize: 12,
-            marginTop: 4,
-            marginBottom: 12,
+            marginTop: 6,
+            marginBottom: 16,
             lineHeight: 1.4,
           }}
         >
@@ -101,7 +101,7 @@ export function IdleRecoveryToast() {
           </span>
           . What were you up to?
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {OPTIONS.map((o) => (
             <button
               key={o.choice}

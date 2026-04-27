@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Cockpit } from "./Cockpit";
 import { Tabs, type TabId } from "./Tabs";
 import { TimelineTab } from "./TimelineTab";
@@ -8,6 +8,7 @@ import { FillTab } from "./FillTab";
 import { Ic, TitleBar } from "@/components";
 import { rpc, on } from "@/lib/api";
 import { useStore } from "@/store";
+import { useInAppShortcuts } from "@/lib/useInAppShortcuts";
 
 function fmtHeader(d: Date): string {
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -40,10 +41,22 @@ export function ExpandedRoot() {
     return off;
   }, []);
 
-  // Window-level shortcuts inside the expanded window:
-  //   Ctrl+/   open cheatsheet
-  //   Ctrl+1..4 jump tabs (power-user nicety, not in the docs)
-  //   Esc      close window (or blur input if focused)
+  // In-app, single-key shortcuts. See `useInAppShortcuts` for the rules.
+  // Esc and Ctrl+1..4 stay as native handlers because they don't fit the
+  // single-key/no-modifier scheme.
+  useInAppShortcuts(
+    useMemo(
+      () => ({
+        toggleTimerLocal: () => void useStore.getState().toggle(),
+        switchTask: () => setTab("list"),
+        expandWindow: () => void rpc("window:toggleExpanded"),
+        brainDump: () => setTab("inbox"),
+        cheatsheet: () => void rpc("window:openCheatsheet"),
+      }),
+      [],
+    ),
+  );
+
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
       const inField =
@@ -53,16 +66,15 @@ export function ExpandedRoot() {
         if (e.key === "Escape") (e.target as HTMLElement).blur();
         return;
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === "/") {
-        e.preventDefault();
-        void rpc("window:openCheatsheet");
-      } else if ((e.ctrlKey || e.metaKey) && /^[1-4]$/.test(e.key)) {
+      if ((e.ctrlKey || e.metaKey) && /^[1-4]$/.test(e.key)) {
         const map: TabId[] = ["timeline", "list", "inbox", "fill"];
         const idx = parseInt(e.key, 10) - 1;
         e.preventDefault();
         setTab(map[idx]);
       } else if (e.key === "Escape") {
-        void rpc("window:close");
+        // In single-window morph, Esc collapses back to pill rather than
+        // closing the window — the pill is the always-on surface.
+        void rpc("window:toggleExpanded");
       }
     };
     window.addEventListener("keydown", handler);
@@ -91,7 +103,7 @@ export function ExpandedRoot() {
     >
       <TitleBar
         title={fmtHeader(new Date())}
-        onClose={() => void rpc("window:close")}
+        onClose={() => void rpc("window:toggleExpanded")}
         right={
           <>
             <button

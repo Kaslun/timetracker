@@ -4,6 +4,7 @@ import { seedIfEmpty } from "./db/seed";
 import { settings } from "./db/repos/settings";
 import { attachHandlers } from "./ipc/handlers";
 import { registerAll } from "./ipc/registerAll";
+import { hydrateProviderRegistry } from "./integrations/registry";
 import {
   ensureIntro,
   ensurePill,
@@ -52,7 +53,11 @@ app.whenReady().then(() => {
   createTray();
   buildAppMenu();
 
-  // 6. Decide initial windows based on first-run state
+  // 6. Hydrate integration registry from the keychain in the background.
+  // The renderer will receive an `integrations:changed` event once it lands.
+  void hydrateProviderRegistry();
+
+  // 7. Decide initial windows based on first-run state
   if (!cfg.firstRunComplete) {
     ensureIntro();
   } else {

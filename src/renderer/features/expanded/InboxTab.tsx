@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useStore } from "@/store";
-import { Ic } from "@/components";
+import { EmptyState, Ic } from "@/components";
 import { rpc } from "@/lib/api";
 
 const TAGS = ["#task", "#idea", "#ask", "#bug", "#write"] as const;
@@ -41,7 +41,7 @@ export function InboxTab() {
       }}
     >
       <div
-        style={{ padding: "12px 14px", borderBottom: "1px solid var(--line)" }}
+        style={{ padding: "14px 16px", borderBottom: "1px solid var(--line)" }}
       >
         <div
           style={{
@@ -63,7 +63,7 @@ export function InboxTab() {
             <Ic.Brain s={12} />
             <span style={{ fontSize: 11, fontWeight: 600 }}>New thought</span>
             <span className="kbd" style={{ marginLeft: "auto" }}>
-              Ctrl+B
+              B
             </span>
           </div>
           <textarea
@@ -102,7 +102,7 @@ export function InboxTab() {
       <div className="scroll" style={{ flex: 1, overflow: "auto" }}>
         <div
           style={{
-            padding: "10px 14px 4px",
+            padding: "12px 16px 6px",
             display: "flex",
             alignItems: "baseline",
             justifyContent: "space-between",
@@ -126,13 +126,20 @@ export function InboxTab() {
             </span>
           )}
         </div>
+        {captures.length === 0 ? (
+          <EmptyState
+            icon={<Ic.Brain s={20} />}
+            title="Brain dump is empty"
+            hint="Press B (or Ctrl+Shift+B from anywhere) to drop a thought without losing focus."
+          />
+        ) : null}
         {captures.map((c) => (
           <div
             key={c.id}
             style={{
               display: "flex",
               gap: 10,
-              padding: "10px 14px",
+              padding: "12px 16px",
               borderBottom: "1px solid var(--line)",
             }}
           >

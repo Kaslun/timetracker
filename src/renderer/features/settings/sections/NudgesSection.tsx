@@ -81,7 +81,11 @@ export function NudgesSection() {
           />
         </div>
       ))}
-      <SectionHeading>Quiet hours</SectionHeading>
+
+      <SectionHeading>Work hours</SectionHeading>
+      <div className="ink-3" style={{ fontSize: 11, marginBottom: 8 }}>
+        Nudges only fire inside this window. Leave it off to allow nudges 24/7.
+      </div>
       <div
         style={{
           display: "flex",
@@ -91,37 +95,67 @@ export function NudgesSection() {
         }}
       >
         <span className="chip">
-          {settings.quietHours?.days.join(" · ") ?? "off"}
+          {settings.workHours?.days.join(" · ") ?? "off"}
         </span>
         <span className="mono num" style={{ fontSize: 12 }}>
-          {settings.quietHours?.from ?? "—"}
+          {settings.workHours?.from ?? "—"}
         </span>
         <span className="ink-3" style={{ fontSize: 11 }}>
           to
         </span>
         <span className="mono num" style={{ fontSize: 12 }}>
-          {settings.quietHours?.to ?? "—"}
+          {settings.workHours?.to ?? "—"}
         </span>
         <span style={{ flex: 1 }} />
         <button
           className="btn ghost icon"
           onClick={() =>
             void patchSettings({
-              quietHours: settings.quietHours
+              workHours: settings.workHours
                 ? null
                 : {
                     days: ["Mon", "Tue", "Wed", "Thu", "Fri"],
-                    from: "18:00",
-                    to: "09:00",
+                    from: "09:00",
+                    to: "17:00",
                   },
             })
           }
           title={
-            settings.quietHours ? "Disable quiet hours" : "Enable quiet hours"
+            settings.workHours ? "Disable work hours" : "Enable work hours"
           }
         >
-          {settings.quietHours ? <Ic.Close s={12} /> : <Ic.Plus s={12} />}
+          {settings.workHours ? <Ic.Close s={12} /> : <Ic.Plus s={12} />}
         </button>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          padding: "12px 0",
+          marginTop: 12,
+          borderTop: "1px solid var(--line)",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 500,
+              letterSpacing: "-0.005em",
+            }}
+          >
+            Match system Do Not Disturb
+          </div>
+          <div className="ink-3" style={{ fontSize: 11, marginTop: 2 }}>
+            Also stay quiet whenever Windows Focus or macOS DND is on.
+          </div>
+        </div>
+        <Toggle
+          on={settings.respectSystemDnd}
+          onChange={(v) => void patchSettings({ respectSystemDnd: v })}
+        />
       </div>
     </>
   );

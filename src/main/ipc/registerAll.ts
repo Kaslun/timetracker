@@ -13,6 +13,7 @@ import { registerSettings } from "./settings";
 import { registerNudges } from "./nudges";
 import { registerExports } from "./exports";
 import { registerWindows } from "./windows";
+import { registerIntegrations } from "./integrations";
 
 export function registerAll(): void {
   registerBootstrap();
@@ -22,4 +23,5 @@ export function registerAll(): void {
   registerNudges();
   registerExports();
   registerWindows();
+  registerIntegrations();
 }

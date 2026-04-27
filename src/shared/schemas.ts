@@ -16,6 +16,8 @@ import {
   ZEntryRow,
   ZEntrySource,
   ZFillSuggestion,
+  ZIntegrationId,
+  ZIntegrationState,
   ZNudgeEvent,
   ZProject,
   ZSettings,
@@ -32,6 +34,9 @@ export {
   ZEntryRow,
   ZEntrySource,
   ZFillSuggestion,
+  ZIntegrationId,
+  ZIntegrationState,
+  ZIntegrationStatus,
   ZNudgeEvent,
   ZProject,
   ZSettings,
@@ -43,7 +48,7 @@ export {
 const ZToastKind = z.enum(["slack", "teams", "idle_recover", "retro_fill"]);
 const ZTabId = z.enum(["timeline", "list", "inbox", "fill"]);
 const ZPillResize = z.enum(["collapsed", "dump"]);
-const ZIntegrationId = z.enum(["linear"]);
+const ZPillMode = z.enum(["pill", "expanded"]);
 
 /**
  * Tuple `[inputSchema, outputSchema]`. `z.void()` for no-arg / no-return.
@@ -113,6 +118,21 @@ export const CHANNELS = {
   "settings:get": [z.void(), ZSettings],
   "settings:patch": [ZSettings.partial(), ZSettings],
 
+  "integration:list": [z.void(), z.array(ZIntegrationState)],
+  "integration:connect": [
+    z.object({
+      id: ZIntegrationId,
+      token: z.string().min(1),
+      workspace: z.string().nullable().optional(),
+      scopes: z.array(z.string()).optional(),
+    }),
+    ZIntegrationState,
+  ],
+  "integration:disconnect": [
+    z.object({ id: ZIntegrationId }),
+    ZIntegrationState,
+  ],
+
   "nudge:dismiss": [z.object({ kind: z.string() }), z.void()],
   "nudge:active": [
     z.object({ kind: z.enum(["idle_recover", "retro_fill"]) }),
@@ -157,7 +177,7 @@ export const CHANNELS = {
   "window:openDashboard": [z.void(), z.void()],
   "window:openSettings": [z.void(), z.void()],
   "window:openCheatsheet": [z.void(), z.void()],
-  "window:openIntegration": [z.object({ id: ZIntegrationId }), z.void()],
+  "window:openIntegration": [z.object({ id: z.enum(["linear"]) }), z.void()],
   "window:hidePill": [z.void(), z.void()],
   "window:showPill": [z.void(), z.void()],
   "window:closeIntro": [
@@ -170,6 +190,8 @@ export const CHANNELS = {
     z.void(),
   ],
   "window:close": [z.void(), z.void()],
+  "window:minimizeFocused": [z.void(), z.void()],
+  "window:maximizeFocused": [z.void(), z.void()],
   "window:setExpandedTab": [z.object({ tab: ZTabId }), z.void()],
 
   "pill:setPosition": [
@@ -200,8 +222,10 @@ export const EVENTS = {
   "entries:changed": z.array(ZEntryRow),
   "captures:changed": z.array(ZCapture),
   "settings:changed": ZSettings,
+  "integrations:changed": z.array(ZIntegrationState),
   "nudge:fire": ZNudgeEvent,
   "pill:state": ZPillResize,
+  "pill:mode": z.object({ mode: ZPillMode }),
   "expanded:state": z.object({ visible: z.boolean() }),
   "expanded:tab": ZTabId,
   "expanded:focus-search": z.void(),

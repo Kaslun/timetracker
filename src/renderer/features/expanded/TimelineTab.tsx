@@ -2,7 +2,7 @@ import type { EntryRow } from "@shared/types";
 import { useStore } from "@/store";
 import { startOfDay } from "@/lib/time";
 import { rpc } from "@/lib/api";
-import { Ic } from "@/components";
+import { EmptyState, Ic } from "@/components";
 
 const HOUR_PX = 42;
 const DAY_START_HOUR = 8;
@@ -100,6 +100,7 @@ export function TimelineTab() {
   const tick = useStore((s) => s.tick);
   const dayStart = startOfDay(new Date(tick)).getTime();
   const blocks = buildBlocks(entries, dayStart, tick);
+  const hasAnyEntryToday = entries.some((e) => e.startedAt >= dayStart);
 
   const totalLogged = entries
     .filter((e) => e.startedAt >= dayStart)
@@ -120,14 +121,14 @@ export function TimelineTab() {
   return (
     <div
       className="scroll"
-      style={{ flex: 1, padding: "14px 16px", overflow: "auto" }}
+      style={{ flex: 1, padding: "16px 18px", overflow: "auto" }}
     >
       <div
         style={{
           display: "flex",
           alignItems: "baseline",
           justifyContent: "space-between",
-          marginBottom: 10,
+          marginBottom: 12,
         }}
       >
         <span className="display" style={{ fontSize: 18, fontWeight: 500 }}>
@@ -140,172 +141,182 @@ export function TimelineTab() {
           </span>
         </span>
       </div>
-      <div
-        style={{
-          position: "relative",
-          display: "flex",
-          minHeight: hours.length * HOUR_PX,
-        }}
-      >
-        <div style={{ width: 40, display: "flex", flexDirection: "column" }}>
-          {hours.map((h) => (
-            <div
-              key={h}
-              className="mono"
-              style={{
-                height: HOUR_PX,
-                fontSize: 10,
-                color: "var(--ink-3)",
-                paddingTop: 1,
-              }}
-            >
-              {String(h).padStart(2, "0")}:00
-            </div>
-          ))}
-        </div>
+
+      {!hasAnyEntryToday ? (
+        <EmptyState
+          icon={<Ic.Timer s={20} />}
+          title="No entries yet"
+          hint="Press Space (or Ctrl+Space from anywhere) to start tracking the task you're on."
+        />
+      ) : (
         <div
           style={{
-            flex: 1,
             position: "relative",
-            marginLeft: 4,
-            borderLeft: "1px solid var(--line)",
+            display: "flex",
+            minHeight: hours.length * HOUR_PX,
           }}
         >
-          {hours.map((h, i) => (
-            <div
-              key={h}
-              style={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                top: i * HOUR_PX,
-                borderTop: i === 0 ? "none" : "1px dashed var(--line)",
-              }}
-            />
-          ))}
+          <div style={{ width: 40, display: "flex", flexDirection: "column" }}>
+            {hours.map((h) => (
+              <div
+                key={h}
+                className="mono"
+                style={{
+                  height: HOUR_PX,
+                  fontSize: 10,
+                  color: "var(--ink-3)",
+                  paddingTop: 1,
+                }}
+              >
+                {String(h).padStart(2, "0")}:00
+              </div>
+            ))}
+          </div>
+          <div
+            style={{
+              flex: 1,
+              position: "relative",
+              marginLeft: 4,
+              borderLeft: "1px solid var(--line)",
+            }}
+          >
+            {hours.map((h, i) => (
+              <div
+                key={h}
+                style={{
+                  position: "absolute",
+                  left: 0,
+                  right: 0,
+                  top: i * HOUR_PX,
+                  borderTop: i === 0 ? "none" : "1px dashed var(--line)",
+                }}
+              />
+            ))}
 
-          {blocks.map((b, i) => {
-            if (b.kind === "gap") {
+            {blocks.map((b, i) => {
+              if (b.kind === "gap") {
+                return (
+                  <button
+                    key={`gap-${i}`}
+                    onClick={() => void onClickGap(b)}
+                    style={{
+                      position: "absolute",
+                      left: 6,
+                      right: 6,
+                      top: b.topPx,
+                      height: b.heightPx,
+                      border: "1px dashed var(--accent)",
+                      borderRadius: 6,
+                      color: "var(--accent)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      background:
+                        "color-mix(in oklab, var(--accent) 6%, transparent)",
+                      cursor: "pointer",
+                      fontSize: 10,
+                      fontWeight: 500,
+                    }}
+                    title={`Fill ${b.gapMinutes}m`}
+                  >
+                    <Ic.Plus s={10} />
+                    <span style={{ marginLeft: 4 }}>
+                      Fill this gap · {b.gapMinutes}m
+                    </span>
+                  </button>
+                );
+              }
+              const e = b.entry;
+              if (!e) return null;
+              const palette = paletteFor(e);
+              const lenH = ((e.endedAt ?? tick) - e.startedAt) / 3_600_000;
+              const isActive = !e.endedAt;
               return (
-                <button
-                  key={`gap-${i}`}
-                  onClick={() => void onClickGap(b)}
+                <div
+                  key={`e-${e.id}`}
                   style={{
                     position: "absolute",
                     left: 6,
                     right: 6,
                     top: b.topPx,
                     height: b.heightPx,
-                    border: "1px dashed var(--accent)",
+                    background: palette.bg,
+                    borderLeft: `3px solid ${palette.bd}`,
                     borderRadius: 6,
-                    color: "var(--accent)",
+                    padding: "4px 8px",
                     display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background:
-                      "color-mix(in oklab, var(--accent) 6%, transparent)",
-                    cursor: "pointer",
-                    fontSize: 10,
-                    fontWeight: 500,
+                    flexDirection: "column",
+                    justifyContent: b.heightPx < 30 ? "center" : "flex-start",
+                    gap: 2,
+                    boxShadow: isActive ? "0 0 0 2px var(--accent)" : "none",
                   }}
-                  title={`Fill ${b.gapMinutes}m`}
                 >
-                  <Ic.Plus s={10} />
-                  <span style={{ marginLeft: 4 }}>
-                    Fill this gap · {b.gapMinutes}m
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 500,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {e.taskTitle}
                   </span>
-                </button>
+                  {b.heightPx > 36 && (
+                    <span className="mono num ink-3" style={{ fontSize: 9 }}>
+                      {Math.floor(lenH)}h{" "}
+                      {String(Math.round((lenH % 1) * 60)).padStart(2, "0")}m
+                    </span>
+                  )}
+                </div>
               );
-            }
-            const e = b.entry;
-            if (!e) return null;
-            const palette = paletteFor(e);
-            const lenH = ((e.endedAt ?? tick) - e.startedAt) / 3_600_000;
-            const isActive = !e.endedAt;
-            return (
+            })}
+
+            {/* NOW indicator */}
+            {nowH >= DAY_START_HOUR && nowH <= DAY_END_HOUR && (
               <div
-                key={`e-${e.id}`}
                 style={{
                   position: "absolute",
-                  left: 6,
-                  right: 6,
-                  top: b.topPx,
-                  height: b.heightPx,
-                  background: palette.bg,
-                  borderLeft: `3px solid ${palette.bd}`,
-                  borderRadius: 6,
-                  padding: "4px 8px",
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: b.heightPx < 30 ? "center" : "flex-start",
-                  gap: 2,
-                  boxShadow: isActive ? "0 0 0 2px var(--accent)" : "none",
+                  left: 0,
+                  right: 0,
+                  top: (nowH - DAY_START_HOUR) * HOUR_PX,
+                  borderTop: "2px solid var(--accent)",
+                  zIndex: 3,
                 }}
               >
                 <span
+                  className="mono"
                   style={{
-                    fontSize: 11,
-                    fontWeight: 500,
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
+                    position: "absolute",
+                    left: -36,
+                    top: -8,
+                    fontSize: 9,
+                    color: "var(--accent)",
+                    fontWeight: 600,
+                    background: "var(--surface)",
+                    padding: "0 3px",
                   }}
                 >
-                  {e.taskTitle}
+                  NOW
                 </span>
-                {b.heightPx > 36 && (
-                  <span className="mono num ink-3" style={{ fontSize: 9 }}>
-                    {Math.floor(lenH)}h{" "}
-                    {String(Math.round((lenH % 1) * 60)).padStart(2, "0")}m
-                  </span>
-                )}
+                <span
+                  className="now-dot"
+                  style={{
+                    position: "absolute",
+                    left: -5,
+                    top: -5,
+                    width: 9,
+                    height: 9,
+                    background: "var(--accent)",
+                    borderRadius: "50%",
+                    border: "2px solid var(--surface)",
+                  }}
+                />
               </div>
-            );
-          })}
-
-          {/* NOW indicator */}
-          {nowH >= DAY_START_HOUR && nowH <= DAY_END_HOUR && (
-            <div
-              style={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                top: (nowH - DAY_START_HOUR) * HOUR_PX,
-                borderTop: "2px solid var(--accent)",
-                zIndex: 3,
-              }}
-            >
-              <span
-                className="mono"
-                style={{
-                  position: "absolute",
-                  left: -36,
-                  top: -8,
-                  fontSize: 9,
-                  color: "var(--accent)",
-                  fontWeight: 600,
-                  background: "var(--surface)",
-                  padding: "0 3px",
-                }}
-              >
-                NOW
-              </span>
-              <span
-                style={{
-                  position: "absolute",
-                  left: -5,
-                  top: -5,
-                  width: 9,
-                  height: 9,
-                  background: "var(--accent)",
-                  borderRadius: "50%",
-                  border: "2px solid var(--surface)",
-                }}
-              />
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

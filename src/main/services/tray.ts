@@ -91,7 +91,10 @@ export function rebuildMenu(): void {
     },
     {
       label: "Brain dump…",
-      accelerator: SHORTCUTS.brainDump.win.replace(/\bCtrl\b/g, "Control"),
+      accelerator: SHORTCUTS.brainDumpGlobal.win.replace(
+        /\bCtrl\b/g,
+        "Control",
+      ),
       click: () => {
         const pill = ensurePill();
         if (!pill.isVisible()) pill.show();

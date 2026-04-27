@@ -75,7 +75,7 @@ export function SectionHeading({ children }: { children: ReactNode }) {
       style={{
         fontSize: 14,
         fontWeight: 600,
-        marginTop: 20,
+        marginTop: 24,
         marginBottom: 8,
         color: "var(--ink-2)",
         letterSpacing: "0.04em",

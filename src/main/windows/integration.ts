@@ -1,9 +1,9 @@
 import type { BrowserWindow } from "electron";
-import { APP_NAME, type IntegrationId } from "@shared/constants";
+import { APP_NAME, type IntegrationPanelId } from "@shared/constants";
 import { createWindow } from "./factory";
 import { state } from "./registry";
 
-export function ensureIntegration(id: IntegrationId): BrowserWindow {
+export function ensureIntegration(id: IntegrationPanelId): BrowserWindow {
   const existing = state.integrations.get(id);
   if (existing && !existing.isDestroyed()) {
     existing.show();

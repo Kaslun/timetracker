@@ -3,3 +3,7 @@ export { Dot } from "./Dot";
 export { Ring } from "./Ring";
 export { TitleBar } from "./TitleBar";
 export { Swatch } from "./Swatch";
+export { EmptyState } from "./EmptyState";
+export { PlayPauseIcon } from "./PlayPauseIcon";
+export { DigitRoll } from "./DigitRoll";
+export { ChevronRotate } from "./ChevronRotate";

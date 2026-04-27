@@ -52,9 +52,9 @@ export const TOAST_KINDS = [
 ] as const;
 export type ToastKind = (typeof TOAST_KINDS)[number];
 
-/** Integration IDs that have a dedicated panel. */
-export const INTEGRATION_IDS = ["linear"] as const;
-export type IntegrationId = (typeof INTEGRATION_IDS)[number];
+/** Integration IDs that have a dedicated full-screen detail window. */
+export const INTEGRATION_PANEL_IDS = ["linear"] as const;
+export type IntegrationPanelId = (typeof INTEGRATION_PANEL_IDS)[number];
 
 /** SQLite filename inside `app.getPath('userData')`. */
 export const DB_FILENAME = "timetracker.sqlite";
@@ -66,6 +66,22 @@ export const PILL = {
   dumpHeight: 180,
   /** Margin from the screen edge when picking the default position. */
   edgeMargin: 20,
+} as const;
+
+/**
+ * Expanded geometry. The pill window morphs to these dimensions when the
+ * user toggles the expanded view; we don't open a separate window. Anchoring
+ * is computed from the pill's current position with edge auto-detection.
+ */
+export const EXPANDED = {
+  width: 460,
+  height: 640,
+} as const;
+
+/** Stepped morph between pill and expanded sizes. ~16 frames over 250ms. */
+export const MORPH = {
+  frames: 16,
+  durationMs: 250,
 } as const;
 
 /** Idle / retroactive-fill thresholds (defaults; overridable via Settings). */
@@ -91,11 +107,12 @@ export const DEFAULT_SETTINGS: Settings = {
     hyperfocusAlerts: false,
     contextSwitchConfirm: false,
   },
-  quietHours: {
+  workHours: {
     days: ["Mon", "Tue", "Wed", "Thu", "Fri"],
-    from: "18:00",
-    to: "09:00",
+    from: "09:00",
+    to: "17:00",
   },
+  respectSystemDnd: false,
   integrationsConnected: {},
   pillPositions: {},
   pillLastDisplayId: null,

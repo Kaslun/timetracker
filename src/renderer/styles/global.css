@@ -41,3 +41,29 @@ input,
 textarea {
   outline: none;
 }
+
+/*
+ * Theme switch crossfade.
+ *
+ * When the theme class on the root changes, every element's color/background/
+ * border crossfades over 250ms instead of cutting. Scoped to color-only
+ * properties so layout never animates. Disabled when the OS prefers reduced
+ * motion.
+ *
+ * Transitions are intentionally on `*` rather than on individual classes —
+ * with token-based theming, *every* element is potentially color-bearing, so
+ * we'd otherwise miss whatever isn't explicitly listed. Browsers efficiently
+ * skip transitions when the computed value didn't change, so the runtime cost
+ * is paid only on theme swaps.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .attensi,
+  .attensi * {
+    transition:
+      background-color 250ms ease,
+      border-color 250ms ease,
+      color 250ms ease,
+      fill 250ms ease,
+      stroke 250ms ease;
+  }
+}

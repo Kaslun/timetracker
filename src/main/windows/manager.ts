@@ -20,6 +20,7 @@ export {
   applyPillSettings,
 } from "./pill";
 export { ensureExpanded, toggleExpanded, isExpandedVisible } from "./expanded";
+export { toggleMorph, getMode, isExpanded, resetToPill } from "./morph";
 export { ensureDashboard } from "./dashboard";
 export { ensureIntro, closeIntro } from "./intro";
 export { ensureSettings } from "./settings";

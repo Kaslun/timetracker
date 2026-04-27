@@ -19,7 +19,7 @@ import { ProjectBreakdown } from "./ProjectBreakdown";
 import { EntriesTable } from "./EntriesTable";
 import { ExportPanel } from "./ExportPanel";
 import { startOfWeek, endOfWeek } from "@/lib/time";
-import { Ic, TitleBar } from "@/components";
+import { EmptyState, Ic, TitleBar } from "@/components";
 import { rpc } from "@/lib/api";
 import { useStore } from "@/store";
 
@@ -241,51 +241,72 @@ export function DashboardRoot() {
         className="scroll"
         style={{
           flex: 1,
-          padding: "16px 20px",
+          padding: "20px 24px",
           overflow: "auto",
           display: "flex",
           flexDirection: "column",
-          gap: 14,
+          gap: 16,
           background: "var(--bg-2)",
         }}
       >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 10,
-          }}
-        >
-          {stats.map((s) => (
-            <Stat key={s.label} {...s} />
-          ))}
-        </div>
-        <div
-          style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: 14 }}
-        >
-          <WeeklyChart
-            buckets={buckets}
-            selectedDay={selectedDay}
-            onSelectDay={setSelectedDay}
+        {entries.length === 0 ? (
+          <EmptyState
+            title="No data yet"
+            hint="Connect an integration in Settings, or log a task to start filling out your dashboard."
+            action={
+              <button
+                className="btn"
+                onClick={() => void rpc("window:openSettings")}
+              >
+                Open Settings
+              </button>
+            }
           />
-          <ProjectBreakdown projects={projects} />
-        </div>
-        <EntriesTable
-          rows={rows}
-          cols={cols}
-          selectedDay={selectedDay}
-          anchor={anchor}
-        />
-        <ExportPanel
-          rowsCount={rows.length}
-          cols={cols}
-          preset={preset}
-          grouping={grouping}
-          onToggleCol={toggleCol}
-          onPickPreset={onPickPreset}
-          onChangeGrouping={setGrouping}
-          onDownload={onDownload}
-        />
+        ) : (
+          <>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(4, 1fr)",
+                gap: 16,
+              }}
+            >
+              {stats.map((s) => (
+                <Stat key={s.label} {...s} />
+              ))}
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1.4fr 1fr",
+                gap: 16,
+              }}
+            >
+              <WeeklyChart
+                buckets={buckets}
+                selectedDay={selectedDay}
+                onSelectDay={setSelectedDay}
+              />
+              <ProjectBreakdown projects={projects} />
+            </div>
+            <EntriesTable
+              rows={rows}
+              cols={cols}
+              selectedDay={selectedDay}
+              anchor={anchor}
+            />
+            <ExportPanel
+              rowsCount={rows.length}
+              cols={cols}
+              preset={preset}
+              grouping={grouping}
+              onToggleCol={toggleCol}
+              onPickPreset={onPickPreset}
+              onChangeGrouping={setGrouping}
+              onDownload={onDownload}
+            />
+          </>
+        )}
       </div>
     </div>
   );

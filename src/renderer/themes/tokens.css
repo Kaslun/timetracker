@@ -506,37 +506,28 @@ body.transparent {
   overflow: hidden;
 }
 
-/* Traffic-light dots (custom titlebar) */
-.tl {
-  display: flex;
-  gap: 6px;
+/* Windows-style title bar controls.
+ *
+ * Standard sizing: 46×32 px, no gap between buttons, flush right.
+ * Default fill is the surface-2 hover, close hover swaps to --danger.
+ */
+.titlebar-ctl {
   -webkit-app-region: no-drag;
+  transition:
+    background-color 120ms ease-out,
+    color 120ms ease-out;
 }
-.tl span {
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  background: var(--ink-4);
-  border: 1px solid var(--line-2);
+.titlebar-ctl:hover {
+  background: var(--surface-2) !important;
+  color: var(--ink) !important;
 }
-.tl span:nth-child(1) {
-  background: #f07066;
-  border-color: rgba(0, 0, 0, 0.1);
+.titlebar-ctl[data-kind="close"]:hover {
+  background: var(--danger) !important;
+  color: #fff !important;
 }
-.tl span:nth-child(2) {
-  background: #f4bd4e;
-  border-color: rgba(0, 0, 0, 0.1);
-}
-.tl span:nth-child(3) {
-  background: #62c655;
-  border-color: rgba(0, 0, 0, 0.1);
-}
-.dir-term .tl span,
-.dir-term .tl span:nth-child(1),
-.dir-term .tl span:nth-child(2),
-.dir-term .tl span:nth-child(3) {
-  background: var(--ink-4);
-  border-color: var(--line-2);
+.titlebar-ctl:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
 }
 
 /* App-region hooks (drag/no-drag) */

@@ -1,24 +1,22 @@
 import { useState } from "react";
 import { NameStep } from "./NameStep";
 import { ToolsStep } from "./ToolsStep";
+import { useStore } from "@/store";
 import { rpc } from "@/lib/api";
 import { Ic } from "@/components";
 
-const INITIAL_CONNECTED: Record<string, boolean> = {
-  linear: true,
-  slack: true,
-};
-
 export function IntroRoot() {
   const [name, setName] = useState("");
-  const [connected, setConnected] =
-    useState<Record<string, boolean>>(INITIAL_CONNECTED);
-
-  const toggle = (id: string): void =>
-    setConnected((c) => ({ ...c, [id]: !c[id] }));
+  const integrations = useStore((s) => s.integrations);
 
   const onDone = (): void => {
     if (!name) return;
+    // Settings stores a quick lookup of connected providers for downstream
+    // services (idle service, etc). The tokens themselves live in the keychain.
+    const connected: Record<string, boolean> = {};
+    for (const i of integrations) {
+      if (i.status === "connected") connected[i.id] = true;
+    }
     void rpc("window:closeIntro", { name, connected });
   };
 
@@ -61,11 +59,11 @@ export function IntroRoot() {
 
         <div
           className="scroll"
-          style={{ flex: 1, padding: "30px 32px 0", overflow: "auto" }}
+          style={{ flex: 1, padding: "32px 32px 4px", overflow: "auto" }}
         >
           <IntroHeader />
           <NameStep name={name} onChange={setName} onSubmit={onDone} />
-          <ToolsStep connected={connected} onToggle={toggle} />
+          <ToolsStep />
         </div>
 
         <IntroFooter name={name} onDone={onDone} onSkip={onSkip} />
@@ -153,7 +151,7 @@ function IntroFooter({
   return (
     <div
       style={{
-        padding: "14px 32px",
+        padding: "16px 32px",
         borderTop: "1px solid var(--line)",
         display: "flex",
         gap: 10,

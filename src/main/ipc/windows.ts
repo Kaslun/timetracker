@@ -1,8 +1,6 @@
 import { BrowserWindow } from "electron";
 import { settings } from "../db/repos";
 import {
-  ensureExpanded,
-  toggleExpanded,
   ensureDashboard,
   ensureSettings,
   ensureCheatsheet,
@@ -13,6 +11,8 @@ import {
   setPillPosition,
   pillResize,
   spawnToast,
+  toggleMorph,
+  getMode,
 } from "../windows/manager";
 import { register } from "./handlers";
 import { broadcast } from "./events";
@@ -20,10 +20,10 @@ import { broadcastChanges } from "./broadcast";
 
 export function registerWindows(): void {
   register("window:openExpanded", () => {
-    ensureExpanded();
+    if (getMode() !== "expanded") toggleMorph({ force: "expanded" });
   });
   register("window:toggleExpanded", () => {
-    toggleExpanded();
+    toggleMorph();
   });
   register("window:openDashboard", () => {
     ensureDashboard();
@@ -60,9 +60,18 @@ export function registerWindows(): void {
   register("window:close", () => {
     BrowserWindow.getFocusedWindow()?.close();
   });
+  register("window:minimizeFocused", () => {
+    BrowserWindow.getFocusedWindow()?.minimize();
+  });
+  register("window:maximizeFocused", () => {
+    const w = BrowserWindow.getFocusedWindow();
+    if (!w) return;
+    if (w.isMaximized()) w.unmaximize();
+    else w.maximize();
+  });
   register("window:setExpandedTab", ({ tab }) => {
     broadcast("expanded:tab", tab);
-    ensureExpanded();
+    if (getMode() !== "expanded") toggleMorph({ force: "expanded" });
   });
 
   register("pill:setPosition", ({ displayId, x, y }) => {

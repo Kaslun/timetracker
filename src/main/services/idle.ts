@@ -1,5 +1,10 @@
 import { powerMonitor } from "electron";
-import type { IdleNudgePayload, RetroNudgePayload } from "@shared/types";
+import type {
+  IdleNudgePayload,
+  RetroNudgePayload,
+  Settings,
+} from "@shared/types";
+import { withinWorkHours } from "@shared/workHours";
 import { entries } from "../db/repos/entries";
 import { settings as settingsRepo } from "../db/repos/settings";
 import { nudges as nudgesRepo } from "../db/repos/nudges";
@@ -9,6 +14,18 @@ import { getFillSuggestions } from "./fillSuggestions";
 import { logger } from "./logger";
 
 const log = logger("idle");
+
+/** Stub: Electron lacks a portable DND query. Hook a native module here when
+ *  ready. For now we never claim the system is in DND. */
+function systemDndActive(): boolean {
+  return false;
+}
+
+/** Centralised gate: false means "swallow this nudge". */
+function nudgesAllowed(cfg: Settings): boolean {
+  if (cfg.respectSystemDnd && systemDndActive()) return false;
+  return withinWorkHours(cfg.workHours);
+}
 
 type ActiveNudge = IdleNudgePayload | RetroNudgePayload;
 
@@ -68,6 +85,7 @@ function tick(): void {
   const cur = entries.open();
   const cfg = settingsRepo.getAll();
   const idleThreshold = cfg.idleThresholdMinutes * 60;
+  const allowed = nudgesAllowed(cfg);
 
   // ── 1. Idle recovery state machine ───────────────────────────────────────
   if (cur && idleSec >= idleThreshold && !pendingIdle) {
@@ -87,7 +105,7 @@ function tick(): void {
       ),
       taskIdAtIdle: pendingIdle.taskIdAtIdle,
     };
-    fire("idle_recover", payload, cfg.nudges.idleRecovery);
+    fire("idle_recover", payload, cfg.nudges.idleRecovery && allowed);
     pendingIdle = null;
   }
 
@@ -104,7 +122,7 @@ function tick(): void {
           durationMinutes: Math.floor(gapMin),
           suggestions: getFillSuggestions(),
         };
-        fire("retro_fill", payload, cfg.nudges.retroactiveFill);
+        fire("retro_fill", payload, cfg.nudges.retroactiveFill && allowed);
         lastRetroAt = now;
       }
     }

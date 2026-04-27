@@ -2,7 +2,14 @@ import type { CurrentTaskView } from "@shared/types";
 import { shortcutLabel } from "@shared/hotkeys";
 import { PillButton } from "./PillButton";
 import { formatElapsed, formatHM } from "@/lib/time";
-import { Dot, Ic, Swatch } from "@/components";
+import {
+  ChevronRotate,
+  DigitRoll,
+  Dot,
+  Ic,
+  PlayPauseIcon,
+  Swatch,
+} from "@/components";
 
 export interface PillShellProps {
   current: CurrentTaskView;
@@ -103,7 +110,8 @@ export function PillShell({
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-          <span
+          <DigitRoll
+            value={formatElapsed(elapsedSec)}
             className="mono num"
             style={{
               fontSize: 17,
@@ -111,9 +119,7 @@ export function PillShell({
               letterSpacing: "-0.02em",
               color: idle ? "var(--ink-3)" : "var(--ink)",
             }}
-          >
-            {formatElapsed(elapsedSec)}
-          </span>
+          />
           <span className="mono num ink-3" style={{ fontSize: 10 }}>
             {idle
               ? `today · ${formatHM(todaySec)}`
@@ -132,10 +138,10 @@ export function PillShell({
       >
         <PillButton
           onClick={onToggle}
-          title={`${current.running ? "Pause" : "Start"} (${shortcutLabel("toggleTimer")})`}
+          title={`${current.running ? "Pause" : "Start"} (${shortcutLabel("toggleTimerLocal")})`}
           color={idle ? "var(--ink-2)" : "var(--ink)"}
         >
-          {current.running ? <Ic.Pause s={13} /> : <Ic.Play s={13} />}
+          <PlayPauseIcon running={current.running} size={13} />
         </PillButton>
         <PillButton
           onClick={onBrainClick}
@@ -150,7 +156,12 @@ export function PillShell({
           title={`${expandedVisible ? "Collapse" : "Expand"} window (${shortcutLabel("expandWindow")})`}
           color="var(--ink-2)"
         >
-          <Ic.Chevron s={13} dir={expandedVisible ? "right" : "left"} />
+          <ChevronRotate
+            open={expandedVisible}
+            s={13}
+            closedAngle={90}
+            openAngle={-90}
+          />
         </PillButton>
       </div>
     </div>

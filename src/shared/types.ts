@@ -63,7 +63,11 @@ export interface NudgeSettings {
   contextSwitchConfirm: boolean;
 }
 
-export interface QuietHours {
+/**
+ * Window during which nudges are *allowed*. Outside of this window — or when
+ * the OS reports DND/Focus and `respectSystemDnd` is true — no nudges fire.
+ */
+export interface WorkHours {
   days: ("Mon" | "Tue" | "Wed" | "Thu" | "Fri" | "Sat" | "Sun")[];
   from: string; // "HH:MM"
   to: string; // "HH:MM"
@@ -82,7 +86,9 @@ export interface Settings {
   idleThresholdMinutes: number;
   fillGapMinutes: number;
   nudges: NudgeSettings;
-  quietHours: QuietHours | null;
+  workHours: WorkHours | null;
+  /** If true, nudges also defer to OS-level Do Not Disturb / Focus mode. */
+  respectSystemDnd: boolean;
   integrationsConnected: Record<string, boolean>;
   pillPositions: Record<string, PillPosition>;
   pillLastDisplayId: string | null;
@@ -137,6 +143,54 @@ export interface FillSuggestion {
   picked: boolean;
   durationMinutes: number;
   taskId?: string;
+}
+
+/**
+ * The full set of providers we currently know how to render in the
+ * Settings → Integrations panel and the first-run intro flow.
+ */
+export type IntegrationId =
+  | "linear"
+  | "jira"
+  | "asana"
+  | "slack"
+  | "teams"
+  | "github"
+  | "gcal"
+  | "notion";
+
+/**
+ * Lifecycle of an integration as far as the UI is concerned.
+ *
+ * - `disconnected`: no token in keychain.
+ * - `connecting`: a connect attempt is in flight.
+ * - `connected`: token persisted, provider is healthy.
+ * - `error`: last connect or refresh attempt failed.
+ */
+export type IntegrationStatus =
+  | "disconnected"
+  | "connecting"
+  | "connected"
+  | "error";
+
+/**
+ * Snapshot of one integration provider, surfaced over IPC.
+ *
+ * `errorMessage` is set whenever `status === "error"` so the UI can render a
+ * concrete reason rather than an opaque red dot.
+ */
+export interface IntegrationState {
+  id: IntegrationId;
+  label: string;
+  meta: string;
+  bg: string;
+  letter: string;
+  status: IntegrationStatus;
+  errorMessage: string | null;
+  /** Wall-clock ms of the last successful sync (or null). */
+  lastSyncedAt: number | null;
+  /** Free-form provider-supplied summary (e.g. workspace name). */
+  account: string | null;
 }
 
 export interface IdleNudgePayload {

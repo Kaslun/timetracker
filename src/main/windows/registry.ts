@@ -7,7 +7,7 @@
  * during dev.
  */
 import type { BrowserWindow } from "electron";
-import type { IntegrationId, ToastKind } from "@shared/constants";
+import type { IntegrationPanelId, ToastKind } from "@shared/constants";
 
 interface Singletons {
   pill: BrowserWindow | null;
@@ -20,7 +20,7 @@ interface Singletons {
 
 export const state: Singletons & {
   toasts: Map<ToastKind, BrowserWindow>;
-  integrations: Map<IntegrationId, BrowserWindow>;
+  integrations: Map<IntegrationPanelId, BrowserWindow>;
 } = {
   pill: null,
   expanded: null,

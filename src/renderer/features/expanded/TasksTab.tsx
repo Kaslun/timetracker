@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { TaskWithProject } from "@shared/types";
 import { useStore } from "@/store";
-import { Ic, Swatch } from "@/components";
+import { EmptyState, Ic, Swatch } from "@/components";
 import { rpc, on } from "@/lib/api";
 import { formatElapsed, formatHM } from "@/lib/time";
 
@@ -60,7 +60,7 @@ export function TasksTab() {
     >
       <div
         style={{
-          padding: "10px 14px",
+          padding: "12px 16px",
           borderBottom: "1px solid var(--line)",
           display: "flex",
           gap: 8,
@@ -82,12 +82,14 @@ export function TasksTab() {
           }}
           style={{ fontSize: 12, flex: 1 }}
         />
-        <span className="kbd">Ctrl+Shift+Space</span>
+        <span className="kbd" title="Press S to focus this list (in-app)">
+          S
+        </span>
       </div>
       <div className="scroll" style={{ flex: 1, overflow: "auto" }}>
         <div
           style={{
-            padding: "10px 14px 6px",
+            padding: "12px 16px 6px",
             display: "flex",
             alignItems: "baseline",
             justifyContent: "space-between",
@@ -110,6 +112,27 @@ export function TasksTab() {
           </span>
         </div>
 
+        {tasks.length === 0 && !showCreateRow ? (
+          <EmptyState
+            title="No tasks yet"
+            hint={
+              projects.length === 0
+                ? "Connect an integration in Settings, or just type a task name above to create one."
+                : "Type a task name above and pick a project to create your first task."
+            }
+            action={
+              projects.length === 0 ? (
+                <button
+                  className="btn"
+                  onClick={() => void rpc("window:openSettings")}
+                >
+                  Open Settings
+                </button>
+              ) : undefined
+            }
+          />
+        ) : null}
+
         {filtered.map((t) => (
           <div
             key={t.id}
@@ -118,7 +141,7 @@ export function TasksTab() {
               display: "flex",
               alignItems: "center",
               gap: 10,
-              padding: "8px 14px",
+              padding: "12px 16px",
               borderLeft: t.active
                 ? "2px solid var(--accent)"
                 : "2px solid transparent",
@@ -169,11 +192,11 @@ export function TasksTab() {
         {showCreateRow && (
           <div
             style={{
-              padding: "12px 14px",
+              padding: "14px 16px",
               borderTop: "1px solid var(--line)",
               display: "flex",
               flexDirection: "column",
-              gap: 6,
+              gap: 8,
             }}
           >
             <div style={{ fontSize: 12, color: "var(--ink-2)" }}>
@@ -212,7 +235,7 @@ export function TasksTab() {
         )}
 
         {!showCreate && (
-          <div style={{ padding: "14px 14px 6px" }}>
+          <div style={{ padding: "16px 16px 6px" }}>
             <span
               className="display"
               style={{

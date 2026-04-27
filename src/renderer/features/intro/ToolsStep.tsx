@@ -1,13 +1,14 @@
+import { useState } from "react";
+import type { IntegrationState } from "@shared/types";
+import { ConnectDrawer } from "../settings/sections/ConnectDrawer";
 import { ServiceTile } from "./ServiceTile";
-import { SERVICES } from "@/lib/integrations";
+import { useStore } from "@/store";
 
-export interface ToolsStepProps {
-  connected: Record<string, boolean>;
-  onToggle: (id: string) => void;
-}
+export function ToolsStep() {
+  const integrations = useStore((s) => s.integrations);
+  const [drawer, setDrawer] = useState<IntegrationState | null>(null);
+  const count = integrations.filter((s) => s.status === "connected").length;
 
-export function ToolsStep({ connected, onToggle }: ToolsStepProps) {
-  const count = Object.values(connected).filter(Boolean).length;
   return (
     <div>
       <div
@@ -36,7 +37,7 @@ export function ToolsStep({ connected, onToggle }: ToolsStepProps) {
         </div>
         <span style={{ flex: 1 }} />
         <span className="mono ink-3" style={{ fontSize: 10 }}>
-          {count} selected
+          {count} connected
         </span>
       </div>
       <div className="ink-3" style={{ fontSize: 11, marginBottom: 12 }}>
@@ -50,15 +51,18 @@ export function ToolsStep({ connected, onToggle }: ToolsStepProps) {
           marginBottom: 20,
         }}
       >
-        {SERVICES.map((s) => (
-          <ServiceTile
-            key={s.id}
-            s={s}
-            connected={!!connected[s.id]}
-            onToggle={() => onToggle(s.id)}
-          />
+        {integrations.map((s) => (
+          <ServiceTile key={s.id} state={s} onClick={() => setDrawer(s)} />
         ))}
       </div>
+
+      {drawer ? (
+        <ConnectDrawer
+          initial={drawer}
+          onClose={() => setDrawer(null)}
+          onConnected={() => setDrawer(null)}
+        />
+      ) : null}
     </div>
   );
 }

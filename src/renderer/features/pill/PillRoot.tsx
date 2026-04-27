@@ -1,8 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { PillShell } from "./PillShell";
 import { BrainDumpCard } from "./BrainDumpCard";
 import { selectLiveElapsed, selectLiveTodaySec, useStore } from "@/store";
 import { rpc, on } from "@/lib/api";
+import { useInAppShortcuts } from "@/lib/useInAppShortcuts";
+import { DUR } from "@/lib/motion";
+import { useMotionEnabled } from "@/lib/useMotionEnabled";
 
 export function PillRoot() {
   const current = useStore((s) => s.current);
@@ -69,6 +73,21 @@ export function PillRoot() {
     void rpc("window:toggleExpanded");
   };
 
+  // In-app shortcuts for the pill. Brain-dump key opens the dump card here
+  // (vs. the inbox tab in the expanded window).
+  useInAppShortcuts(
+    useMemo(
+      () => ({
+        toggleTimerLocal: () => void useStore.getState().toggle(),
+        switchTask: () => void rpc("window:setExpandedTab", { tab: "list" }),
+        expandWindow: () => void rpc("window:toggleExpanded"),
+        brainDump: onBrainClick,
+        cheatsheet: () => void rpc("window:openCheatsheet"),
+      }),
+      [],
+    ),
+  );
+
   return (
     <div
       className="attensi"
@@ -91,16 +110,57 @@ export function PillRoot() {
         onBrainClick={onBrainClick}
         onExpandClick={onExpandClick}
       />
-      {dumpOpen && (
-        <BrainDumpCard
-          ref={inputRef}
-          text={dumpText}
-          tag={dumpTag}
-          onTextChange={setDumpText}
-          onTagChange={setDumpTag}
-          onSubmit={onSave}
-        />
-      )}
+      <BrainDump
+        open={dumpOpen}
+        text={dumpText}
+        tag={dumpTag}
+        onTextChange={setDumpText}
+        onTagChange={setDumpTag}
+        onSubmit={onSave}
+        inputRef={inputRef}
+      />
     </div>
+  );
+}
+
+function BrainDump({
+  open,
+  text,
+  tag,
+  onTextChange,
+  onTagChange,
+  onSubmit,
+  inputRef,
+}: {
+  open: boolean;
+  text: string;
+  tag: string | null;
+  onTextChange: (v: string) => void;
+  onTagChange: (v: string | null) => void;
+  onSubmit: () => void;
+  inputRef: React.RefObject<HTMLTextAreaElement | null>;
+}) {
+  const motionOn = useMotionEnabled();
+  return (
+    <AnimatePresence initial={false}>
+      {open ? (
+        <motion.div
+          key="dump"
+          initial={motionOn ? { opacity: 0, y: -8 } : false}
+          animate={{ opacity: 1, y: 0 }}
+          exit={motionOn ? { opacity: 0, y: -8 } : { opacity: 0 }}
+          transition={{ duration: motionOn ? DUR.base : 0, ease: "easeOut" }}
+        >
+          <BrainDumpCard
+            ref={inputRef}
+            text={text}
+            tag={tag}
+            onTextChange={onTextChange}
+            onTagChange={onTagChange}
+            onSubmit={onSubmit}
+          />
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
   );
 }

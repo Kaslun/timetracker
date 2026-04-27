@@ -81,7 +81,7 @@ export function SettingsRoot() {
         </nav>
         <div
           className="scroll"
-          style={{ flex: 1, padding: "16px 20px", overflow: "auto" }}
+          style={{ flex: 1, padding: "20px 24px", overflow: "auto" }}
         >
           <Renderer />
         </div>

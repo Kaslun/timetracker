@@ -97,7 +97,7 @@ const ZNudgeSettings = z.object({
   contextSwitchConfirm: z.boolean(),
 });
 
-const ZQuietHours = z
+const ZWorkHours = z
   .object({
     days: z.array(z.enum(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"])),
     from: z.string(),
@@ -115,12 +115,43 @@ export const ZSettings = z.object({
   idleThresholdMinutes: z.number(),
   fillGapMinutes: z.number(),
   nudges: ZNudgeSettings,
-  quietHours: ZQuietHours,
+  workHours: ZWorkHours,
+  respectSystemDnd: z.boolean(),
   integrationsConnected: z.record(z.string(), z.boolean()),
   pillPositions: z.record(z.string(), ZPillPosition),
   pillLastDisplayId: z.string().nullable(),
   pillVisible: z.boolean(),
   autoLaunch: z.boolean(),
+});
+
+export const ZIntegrationId = z.enum([
+  "linear",
+  "jira",
+  "asana",
+  "slack",
+  "teams",
+  "github",
+  "gcal",
+  "notion",
+]);
+
+export const ZIntegrationStatus = z.enum([
+  "disconnected",
+  "connecting",
+  "connected",
+  "error",
+]);
+
+export const ZIntegrationState = z.object({
+  id: ZIntegrationId,
+  label: z.string(),
+  meta: z.string(),
+  bg: z.string(),
+  letter: z.string(),
+  status: ZIntegrationStatus,
+  errorMessage: z.string().nullable(),
+  lastSyncedAt: z.number().nullable(),
+  account: z.string().nullable(),
 });
 
 export const ZFillSuggestion = z.object({
@@ -164,5 +195,6 @@ export const ZBootstrap = z.object({
   captures: z.array(ZCapture),
   projects: z.array(ZProject),
   fillSuggestions: z.array(ZFillSuggestion),
+  integrations: z.array(ZIntegrationState),
   platform: z.enum(["win", "mac", "linux"]),
 });

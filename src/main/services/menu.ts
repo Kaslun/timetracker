@@ -8,11 +8,18 @@ import {
   showPill,
   hidePill,
   spawnToast,
-  toggleExpanded,
+  toggleMorph,
+  getMode,
 } from "../windows/manager";
 
-const ACCEL = (k: keyof typeof SHORTCUTS): string =>
-  SHORTCUTS[k].win.replace(/\bCtrl\b/g, "Control");
+/** Menus only honor proper accelerators (with modifiers). For in-app
+ *  shortcuts we render the bare key as a hint — Electron treats single-key
+ *  accelerators as no-ops anyway, but the visible label is still useful. */
+const ACCEL = (k: keyof typeof SHORTCUTS): string => {
+  const sc = SHORTCUTS[k];
+  if (sc.scope === "global") return sc.win.replace(/\bCtrl\b/g, "Control");
+  return sc.win;
+};
 
 export function buildAppMenu(): void {
   const template: Electron.MenuItemConstructorOptions[] = [
@@ -33,7 +40,9 @@ export function buildAppMenu(): void {
         {
           label: "Expanded",
           accelerator: ACCEL("expandWindow"),
-          click: () => toggleExpanded({ alwaysShow: true }),
+          click: () => {
+            if (getMode() !== "expanded") toggleMorph({ force: "expanded" });
+          },
         },
         { label: "Dashboard", click: () => ensureDashboard() },
         {

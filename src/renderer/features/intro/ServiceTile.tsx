@@ -1,27 +1,39 @@
+import type { IntegrationState } from "@shared/types";
 import { Ic } from "@/components";
-import type { ServiceMeta } from "@/lib/integrations";
 
 export interface ServiceTileProps {
-  s: ServiceMeta;
-  connected: boolean;
-  onToggle: () => void;
+  state: IntegrationState;
+  onClick: () => void;
 }
 
-export function ServiceTile({ s, connected, onToggle }: ServiceTileProps) {
+/**
+ * Compact service tile rendered in the first-run "Link your tools" grid and
+ * driven entirely by the live `IntegrationState` snapshot from the registry.
+ *
+ * Click → caller pops the same connect drawer used in Settings. Disconnected
+ * tiles get the calm neutral border, connected tiles glow `--accent`, and an
+ * error tile drops a small red dot — never an alarm bell, this is onboarding.
+ */
+export function ServiceTile({ state: s, onClick }: ServiceTileProps) {
+  const connected = s.status === "connected";
+  const isError = s.status === "error";
+  const busy = s.status === "connecting";
+
   return (
     <button
-      onClick={onToggle}
+      onClick={onClick}
+      disabled={busy}
       style={{
         display: "flex",
         alignItems: "center",
         gap: 10,
         padding: "10px 12px",
-        border: `1.5px solid ${connected ? "var(--accent)" : "var(--line)"}`,
+        border: `1.5px solid ${connected ? "var(--accent)" : isError ? "var(--danger)" : "var(--line)"}`,
         borderRadius: "var(--radius)",
         background: connected
           ? "color-mix(in oklab, var(--accent) 6%, var(--surface))"
           : "var(--surface)",
-        cursor: "pointer",
+        cursor: busy ? "wait" : "pointer",
         transition: "border-color 0.15s, background 0.15s",
         position: "relative",
         textAlign: "left",
@@ -53,7 +65,7 @@ export function ServiceTile({ s, connected, onToggle }: ServiceTileProps) {
           {s.label}
         </div>
         <div className="mono ink-3" style={{ fontSize: 10, marginTop: 1 }}>
-          {s.meta}
+          {connected ? "Connected" : busy ? "Connecting…" : s.meta}
         </div>
       </div>
       <div
@@ -61,7 +73,7 @@ export function ServiceTile({ s, connected, onToggle }: ServiceTileProps) {
           width: 18,
           height: 18,
           borderRadius: "50%",
-          border: `1.5px solid ${connected ? "var(--accent)" : "var(--ink-4)"}`,
+          border: `1.5px solid ${connected ? "var(--accent)" : isError ? "var(--danger)" : "var(--ink-4)"}`,
           background: connected ? "var(--accent)" : "transparent",
           display: "flex",
           alignItems: "center",

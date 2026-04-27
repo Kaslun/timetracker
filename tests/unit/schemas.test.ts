@@ -116,6 +116,7 @@ describe("ZBootstrap", () => {
       captures: [],
       projects: [],
       fillSuggestions: [],
+      integrations: [],
       platform: "win" as const,
     };
     expect(ZBootstrap.safeParse(empty).success).toBe(true);
