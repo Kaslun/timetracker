@@ -17,6 +17,15 @@
 ; - Quoted paths are required because "Attensi Time Tracker" has a space.
 ; ─────────────────────────────────────────────────────────────────────────
 
+; The installer-only block. electron-builder includes this same .nsh file
+; while compiling the uninstaller stub (BUILD_UNINSTALLER is defined for
+; that pass) — but neither `customInit` nor `customInstall` is expanded
+; there, so the top-level `Var` declarations would dangle and trigger
+; NSIS warning 6001 ("Variable ... not referenced or never set"). With
+; `-WX` (warning-as-error) that aborts the whole build. Gating on
+; !ifndef BUILD_UNINSTALLER hides everything from the uninstaller pass.
+!ifndef BUILD_UNINSTALLER
+
 Var Attensi.FreshInstall
 Var Attensi.PrevDir
 
@@ -65,3 +74,5 @@ Var Attensi.PrevDir
     ${EndIf}
   ${EndIf}
 !macroend
+
+!endif ; !ifndef BUILD_UNINSTALLER
