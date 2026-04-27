@@ -14,6 +14,8 @@ import { registerNudges } from "./nudges";
 import { registerExports } from "./exports";
 import { registerWindows } from "./windows";
 import { registerIntegrations } from "./integrations";
+import { registerTags } from "./tags";
+import { registerApp } from "./app";
 
 export function registerAll(): void {
   registerBootstrap();
@@ -24,4 +26,6 @@ export function registerAll(): void {
   registerExports();
   registerWindows();
   registerIntegrations();
+  registerTags();
+  registerApp();
 }

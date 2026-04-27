@@ -73,6 +73,10 @@ export function PillRoot() {
     void rpc("window:toggleExpanded");
   };
 
+  const onQuitClick = (): void => {
+    void rpc("app:requestQuit");
+  };
+
   // In-app shortcuts for the pill. Brain-dump key opens the dump card here
   // (vs. the inbox tab in the expanded window).
   useInAppShortcuts(
@@ -109,6 +113,7 @@ export function PillRoot() {
         onToggle={onToggle}
         onBrainClick={onBrainClick}
         onExpandClick={onExpandClick}
+        onQuitClick={onQuitClick}
       />
       <BrainDump
         open={dumpOpen}

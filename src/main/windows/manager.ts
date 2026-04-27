@@ -27,4 +27,5 @@ export { ensureSettings } from "./settings";
 export { ensureCheatsheet } from "./cheatsheet";
 export { spawnToast, closeToast } from "./toast";
 export { ensureIntegration } from "./integration";
+export { ensureEod, closeEod } from "./eod";
 export { listAllWindows, getWindow, type SingletonKind } from "./registry";

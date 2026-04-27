@@ -165,7 +165,6 @@ export function toggleMorph(opts?: { force?: Mode }): void {
     win.setResizable(true);
     win.setMinimumSize(420, 520);
     win.setAlwaysOnTop(false);
-    win.setSkipTaskbar(false);
     win.setHasShadow(true);
 
     morph.mode = "expanded";
@@ -189,7 +188,6 @@ export function toggleMorph(opts?: { force?: Mode }): void {
       win.setMinimumSize(PILL.width, PILL.collapsedHeight);
       win.setResizable(false);
       win.setAlwaysOnTop(true, "floating");
-      win.setSkipTaskbar(true);
       win.setHasShadow(false);
     });
   }

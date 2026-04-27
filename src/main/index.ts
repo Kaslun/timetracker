@@ -18,6 +18,7 @@ import {
 } from "./services/shortcuts";
 import { createTray, destroyTray } from "./services/tray";
 import { buildAppMenu } from "./services/menu";
+import { checkForUpdate } from "./services/updater";
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -63,6 +64,11 @@ app.whenReady().then(() => {
   } else {
     ensurePill();
   }
+
+  // 8. Check for updates in the background. Errors are logged, never thrown.
+  setTimeout(() => {
+    void checkForUpdate();
+  }, 5_000);
 });
 
 app.on("will-quit", () => {
@@ -75,8 +81,10 @@ app.on("before-quit", () => {
 });
 
 app.on("window-all-closed", () => {
-  // On Windows, keep app alive in tray (todo: tray)
-  // For now, quit when all windows close to avoid orphaned processes during dev.
+  // The tray keeps the app alive on Windows; we only quit explicitly via
+  // `requestQuit()` (which routes through the end-of-day prompt). If the
+  // user closes the pill window from the taskbar, fall back to quit so we
+  // don't end up orphaned with no UI.
   if (process.platform !== "darwin") {
     app.quit();
   }

@@ -50,6 +50,33 @@ const ZTabId = z.enum(["timeline", "list", "inbox", "fill"]);
 const ZPillResize = z.enum(["collapsed", "dump"]);
 const ZPillMode = z.enum(["pill", "expanded"]);
 
+const ZEodGap = z.object({
+  startedAt: z.number(),
+  endedAt: z.number(),
+  minutes: z.number(),
+});
+export const ZEodSummary = z.object({
+  loggedSec: z.number(),
+  looseSec: z.number(),
+  gaps: z.array(ZEodGap),
+});
+
+const ZUpdateInfo = z.object({
+  current: z.string(),
+  latest: z.string().nullable(),
+  hasUpdate: z.boolean(),
+  url: z.string().nullable(),
+  notes: z.string().nullable(),
+  checkedAt: z.number(),
+  error: z.string().nullable(),
+});
+
+export const ZCustomTag = z.object({
+  id: z.string(),
+  label: z.string(),
+  createdAt: z.number(),
+});
+
 /**
  * Tuple `[inputSchema, outputSchema]`. `z.void()` for no-arg / no-return.
  * Adding a channel = one new entry here + a `register()` call on the main
@@ -202,6 +229,18 @@ export const CHANNELS = {
 
   "demo:toast": [z.object({ kind: ZToastKind }), z.void()],
   "autoLaunch:set": [z.object({ enabled: z.boolean() }), z.void()],
+
+  "app:requestQuit": [z.void(), z.void()],
+  "app:quitNow": [z.void(), z.void()],
+  "app:cancelQuit": [z.void(), z.void()],
+  "eod:summary": [z.void(), ZEodSummary],
+
+  "tag:list": [z.void(), z.array(ZCustomTag)],
+  "tag:create": [z.object({ label: z.string().min(1) }), ZCustomTag],
+  "tag:delete": [z.object({ id: z.string() }), z.void()],
+
+  "update:check": [z.void(), ZUpdateInfo],
+  "update:open": [z.void(), z.void()],
 } as const;
 
 export type ChannelName = keyof typeof CHANNELS;
@@ -231,6 +270,8 @@ export const EVENTS = {
   "expanded:focus-search": z.void(),
   "pill:focus-dump": z.void(),
   "demo:toast": z.object({ kind: ZToastKind }),
+  "tags:changed": z.array(ZCustomTag),
+  "update:available": ZUpdateInfo,
 } as const;
 
 export type EventName = keyof typeof EVENTS;

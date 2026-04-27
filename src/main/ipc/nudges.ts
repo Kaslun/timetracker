@@ -52,8 +52,13 @@ export function registerNudges(): void {
     let inserted = 0;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    // Fall back to the user's most recently used task when an integration
+    // suggestion has no concrete `taskId` — silently skipping (the previous
+    // behavior) hid every fill attempt and made the timeline feel broken.
+    const fallback = tasks.list()[0]?.id ?? null;
     for (const s of suggestions) {
-      if (!s.taskId) continue;
+      const taskId = s.taskId ?? fallback;
+      if (!taskId) continue;
       const [hh, mm] = s.at.split(":").map(Number);
       const startedAt = new Date(today);
       startedAt.setHours(hh ?? 0, mm ?? 0, 0, 0);
@@ -61,7 +66,7 @@ export function registerNudges(): void {
         startedAt.getTime() + s.durationMinutes * MS_PER_MIN,
       );
       entries.insert({
-        taskId: s.taskId,
+        taskId,
         startedAt: startedAt.getTime(),
         endedAt: endedAt.getTime(),
         source: "fill",

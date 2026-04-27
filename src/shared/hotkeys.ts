@@ -48,6 +48,12 @@ export const SHORTCUTS = {
     label: "Brain dump (anywhere)",
     scope: "global",
   },
+  quitApp: {
+    mac: "⌘ ⇧ Q",
+    win: "Ctrl+Shift+Q",
+    label: "Quit Attensi (anywhere)",
+    scope: "global",
+  },
 
   // ── In-app (single-key, ignored when inputs are focused) ─────────────
   toggleTimerLocal: {

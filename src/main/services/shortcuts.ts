@@ -5,6 +5,7 @@ import { broadcast } from "../ipc/events";
 import { entries } from "../db/repos/entries";
 import { tasks } from "../db/repos/tasks";
 import { captures } from "../db/repos/captures";
+import { requestQuit } from "./quit";
 import { logger } from "./logger";
 
 const log = logger("shortcuts");
@@ -47,6 +48,12 @@ const BINDINGS: Binding[] = [
       if (!pill.isVisible()) pill.show();
       pill.focus();
       broadcast("pill:focus-dump", undefined);
+    },
+  },
+  {
+    key: "quitApp",
+    handler: () => {
+      requestQuit();
     },
   },
 ];

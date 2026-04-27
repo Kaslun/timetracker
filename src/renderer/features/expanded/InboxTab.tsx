@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useStore } from "@/store";
-import { EmptyState, Ic } from "@/components";
+import { EmptyState, Ic, TagPicker } from "@/components";
 import { rpc } from "@/lib/api";
-
-const TAGS = ["#task", "#idea", "#ask", "#bug", "#write"] as const;
+import { useTags } from "@/lib/useTags";
 
 function relativeWhen(ts: number, now: number): string {
   const diff = Math.max(0, now - ts);
@@ -21,6 +20,7 @@ export function InboxTab() {
   const captures = useStore((s) => s.captures);
   const tick = useStore((s) => s.tick);
   const [draft, setDraft] = useState("");
+  const { tags } = useTags();
 
   const untagged = captures.filter((c) => !c.tag).length;
 
@@ -92,7 +92,7 @@ export function InboxTab() {
         <div
           style={{ display: "flex", gap: 4, marginTop: 8, flexWrap: "wrap" }}
         >
-          {TAGS.map((t) => (
+          {tags.map((t) => (
             <span key={t} className="chip">
               {t}
             </span>
@@ -176,40 +176,12 @@ export function InboxTab() {
                 <span className="mono ink-3" style={{ fontSize: 10 }}>
                   {relativeWhen(c.createdAt, tick)}
                 </span>
-                {c.tag ? (
-                  <button
-                    className="chip"
-                    onClick={() =>
-                      void rpc("capture:tag", { id: c.id, tag: null })
-                    }
-                  >
-                    {c.tag}
-                  </button>
-                ) : (
-                  <select
-                    value=""
-                    onChange={(e) =>
-                      void rpc("capture:tag", {
-                        id: c.id,
-                        tag: e.target.value || null,
-                      })
-                    }
-                    className="chip"
-                    style={{
-                      color: "var(--accent)",
-                      borderColor: "var(--accent)",
-                      background: "transparent",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <option value="">needs tag</option>
-                    {TAGS.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                  </select>
-                )}
+                <TagPicker
+                  value={c.tag ?? null}
+                  onChange={(t) =>
+                    void rpc("capture:tag", { id: c.id, tag: t })
+                  }
+                />
               </div>
             </div>
           </div>

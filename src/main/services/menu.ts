@@ -11,6 +11,7 @@ import {
   toggleMorph,
   getMode,
 } from "../windows/manager";
+import { requestQuit } from "./quit";
 
 /** Menus only honor proper accelerators (with modifiers). For in-app
  *  shortcuts we render the bare key as a hint — Electron treats single-key
@@ -31,7 +32,11 @@ export function buildAppMenu(): void {
         { type: "separator" },
         { label: "Settings…", click: () => ensureSettings() },
         { type: "separator" },
-        { role: "quit", label: "Quit" },
+        {
+          label: "Quit Attensi Time Tracker",
+          accelerator: ACCEL("quitApp"),
+          click: () => requestQuit(),
+        },
       ],
     },
     {

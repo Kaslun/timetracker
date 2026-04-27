@@ -9,6 +9,7 @@ import { Ic, TitleBar } from "@/components";
 import { rpc, on } from "@/lib/api";
 import { useStore } from "@/store";
 import { useInAppShortcuts } from "@/lib/useInAppShortcuts";
+import { UpdateBanner } from "@/features/update/UpdateBanner";
 
 function fmtHeader(d: Date): string {
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -123,6 +124,7 @@ export function ExpandedRoot() {
           </>
         }
       />
+      <UpdateBanner />
       <Cockpit />
       <Tabs
         active={tab}

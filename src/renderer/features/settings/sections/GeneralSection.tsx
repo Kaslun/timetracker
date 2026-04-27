@@ -1,11 +1,35 @@
+import { useState } from "react";
 import { Toggle } from "../Toggle";
-import { Field, NumberInput, SectionTitle } from "../Field";
+import { Field, NumberInput, SectionHeading, SectionTitle } from "../Field";
 import { useStore } from "@/store";
 import { rpc } from "@/lib/api";
+
+interface UpdateInfo {
+  current: string;
+  latest: string | null;
+  hasUpdate: boolean;
+  url: string | null;
+  notes: string | null;
+  checkedAt: number;
+  error: string | null;
+}
 
 export function GeneralSection() {
   const settings = useStore((s) => s.settings);
   const patchSettings = useStore((s) => s.patchSettings);
+  const [update, setUpdate] = useState<UpdateInfo | null>(null);
+  const [checking, setChecking] = useState(false);
+
+  const onCheck = async (): Promise<void> => {
+    setChecking(true);
+    const u = await rpc("update:check");
+    setUpdate(u);
+    setChecking(false);
+  };
+
+  const onOpen = (): void => {
+    void rpc("update:open");
+  };
 
   return (
     <>
@@ -77,6 +101,36 @@ export function GeneralSection() {
           onChange={(v) => void patchSettings({ fillGapMinutes: v })}
           suffix="min"
         />
+      </Field>
+
+      <SectionHeading>Updates</SectionHeading>
+      <Field
+        label="Check for a newer version"
+        sub={
+          update
+            ? update.error
+              ? `Last check failed: ${update.error}`
+              : update.hasUpdate
+                ? `Latest is ${update.latest} — you have ${update.current}.`
+                : `You're on the latest (${update.current}).`
+            : "Looks for a newer release on GitHub."
+        }
+        inline
+      >
+        <div style={{ display: "flex", gap: 6 }}>
+          <button
+            className="btn"
+            onClick={() => void onCheck()}
+            disabled={checking}
+          >
+            {checking ? "Checking…" : "Check now"}
+          </button>
+          {update?.hasUpdate ? (
+            <button className="btn accent" onClick={onOpen}>
+              Open release
+            </button>
+          ) : null}
+        </div>
       </Field>
     </>
   );

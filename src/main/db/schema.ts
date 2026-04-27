@@ -66,6 +66,18 @@ const MIGRATIONS: Migration[] = [
       `);
     },
   },
+  {
+    version: 2,
+    up: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS custom_tags (
+          id          TEXT PRIMARY KEY,
+          label       TEXT NOT NULL UNIQUE,
+          created_at  INTEGER NOT NULL
+        );
+      `);
+    },
+  },
 ];
 
 export function runMigrations(db: Db): void {

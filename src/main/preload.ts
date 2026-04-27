@@ -10,7 +10,8 @@ interface AttensiApi {
     | "toast"
     | "settings"
     | "cheatsheet"
-    | "integration";
+    | "integration"
+    | "eod";
   toastKind: "slack" | "teams" | "idle_recover" | "retro_fill" | null;
   integrationId: "linear" | null;
   invoke<C extends ChannelName>(channel: C, input?: unknown): Promise<unknown>;

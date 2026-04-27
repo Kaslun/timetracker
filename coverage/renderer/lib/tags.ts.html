@@ -3,15 +3,15 @@
 <html lang="en">
 
 <head>
-    <title>Code coverage report for shared/workHours.ts</title>
+    <title>Code coverage report for renderer/lib/tags.ts</title>
     <meta charset="utf-8" />
-    <link rel="stylesheet" href="../prettify.css" />
-    <link rel="stylesheet" href="../base.css" />
-    <link rel="shortcut icon" type="image/x-icon" href="../favicon.png" />
+    <link rel="stylesheet" href="../../prettify.css" />
+    <link rel="stylesheet" href="../../base.css" />
+    <link rel="shortcut icon" type="image/x-icon" href="../../favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style type='text/css'>
         .coverage-summary .sorter {
-            background-image: url(../sort-arrow-sprite.png);
+            background-image: url(../../sort-arrow-sprite.png);
         }
     </style>
 </head>
@@ -19,34 +19,34 @@
 <body>
 <div class='wrapper'>
     <div class='pad1'>
-        <h1><a href="../index.html">All files</a> / <a href="index.html">shared</a> workHours.ts</h1>
+        <h1><a href="../../index.html">All files</a> / <a href="index.html">renderer/lib</a> tags.ts</h1>
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>15/15</span>
+                <span class='fraction'>5/5</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>11/11</span>
+                <span class='fraction'>2/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>3/3</span>
+                <span class='fraction'>1/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>10/10</span>
+                <span class='fraction'>5/5</span>
             </div>
         
             
@@ -93,16 +93,7 @@
 <a name='L28'></a><a href='#L28'>28</a>
 <a name='L29'></a><a href='#L29'>29</a>
 <a name='L30'></a><a href='#L30'>30</a>
-<a name='L31'></a><a href='#L31'>31</a>
-<a name='L32'></a><a href='#L32'>32</a>
-<a name='L33'></a><a href='#L33'>33</a>
-<a name='L34'></a><a href='#L34'>34</a>
-<a name='L35'></a><a href='#L35'>35</a>
-<a name='L36'></a><a href='#L36'>36</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L31'></a><a href='#L31'>31</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -122,51 +113,45 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">7x</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">10x</span>
-<span class="cline-any cline-yes">10x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">11x</span>
+<span class="cline-any cline-yes">11x</span>
+<span class="cline-any cline-yes">11x</span>
+<span class="cline-any cline-yes">11x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">/**
- * Pure, dependency-free helpers for the "work hours" gate.
- *
- * Lives in shared/ so both the main process (idle service) and unit tests
- * can use it without dragging in Electron.
+ * Shipped defaults — match the original pill brain-dump list and the
+ * inbox tag set so the two surfaces always agree out of the box.
  */
-import type { WorkHours } from "./types";
+export const DEFAULT_TAGS: readonly string[] = [
+  "#task",
+  "#bug",
+  "#idea",
+  "#ask",
+  "#design",
+  "#write",
+] as const;
 &nbsp;
-const DAYS_BY_INDEX: WorkHours["days"][number][] = [
-  "Sun",
-  "Mon",
-  "Tue",
-  "Wed",
-  "Thu",
-  "Fri",
-  "Sat",
-];
+export interface CustomTag {
+  id: string;
+  label: string;
+  createdAt: number;
+}
 &nbsp;
-/** True if `now` falls inside the work-hours window. A null window allows
- *  nudges 24/7 (matches the v1 behavior when workHours is disabled). */
-export function withinWorkHours(
-  hours: WorkHours | null,
-  now: Date = new Date(),
-): boolean {
-  if (!hours) return true;
-  if (!hours.days.includes(DAYS_BY_INDEX[now.getDay()])) return false;
-  const minutesNow = now.getHours() * 60 + now.getMinutes();
-  const [fh, fm] = hours.from.split(":").map((s) =&gt; parseInt(s, 10));
-  const [th, tm] = hours.to.split(":").map((s) =&gt; parseInt(s, 10));
-  const fromMin = fh * 60 + fm;
-  const toMin = th * 60 + tm;
-  if (toMin &gt; fromMin) return minutesNow &gt;= fromMin &amp;&amp; minutesNow &lt; toMin;
-  // Wrap past midnight (e.g. evening shift 22:00–02:00).
-  return minutesNow &gt;= fromMin || minutesNow &lt; toMin;
+/**
+ * Normalize a free-text tag label to the same shape we persist:
+ * lowercased, leading `#`, dashes for spaces, allowed chars `[a-z0-9-]`.
+ * Returns `""` if no usable characters survive normalization.
+ */
+export function normalizeTagLabel(input: string): string {
+  const trimmed = input.trim().toLowerCase();
+  const stripped = trimmed.replace(/^#+/, "");
+  const safe = stripped.replace(/[^a-z0-9-]+/g, "-").replace(/^-+|-+$/g, "");
+  return safe ? `#${safe}` : "";
 }
 &nbsp;</pre></td></tr></table></pre>
 
@@ -175,16 +160,16 @@ export function withinWorkHours(
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2026-04-27T11:47:42.235Z
+                at 2026-04-27T11:47:42.257Z
             </div>
-        <script src="../prettify.js"></script>
+        <script src="../../prettify.js"></script>
         <script>
             window.onload = function () {
                 prettyPrint();
             };
         </script>
-        <script src="../sorter.js"></script>
-        <script src="../block-navigation.js"></script>
+        <script src="../../sorter.js"></script>
+        <script src="../../block-navigation.js"></script>
     </body>
 </html>
     

@@ -27,6 +27,7 @@ export default defineConfig({
         "src/renderer/lib/api.ts",
         "src/renderer/lib/useInAppShortcuts.ts",
         "src/renderer/lib/useMotionEnabled.ts",
+        "src/renderer/lib/useTags.ts",
         "src/shared/types.ts",
       ],
       thresholds: {

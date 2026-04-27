@@ -20,6 +20,7 @@ export interface PillShellProps {
   onToggle: () => void;
   onBrainClick: () => void;
   onExpandClick: () => void;
+  onQuitClick: () => void;
 }
 
 export function PillShell({
@@ -31,6 +32,7 @@ export function PillShell({
   onToggle,
   onBrainClick,
   onExpandClick,
+  onQuitClick,
 }: PillShellProps) {
   const idle = !current.running;
   const ticket = current.ticket;
@@ -162,6 +164,13 @@ export function PillShell({
             closedAngle={90}
             openAngle={-90}
           />
+        </PillButton>
+        <PillButton
+          onClick={onQuitClick}
+          title={`Quit Attensi (${shortcutLabel("quitApp")})`}
+          color="var(--ink-3)"
+        >
+          <Ic.Close s={12} />
         </PillButton>
       </div>
     </div>

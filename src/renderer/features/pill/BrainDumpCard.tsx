@@ -1,7 +1,5 @@
 import { forwardRef } from "react";
-import { Ic } from "@/components";
-
-const TAG_OPTIONS = ["#bug", "#idea", "#ask", "#design", "#write"] as const;
+import { Ic, TagPicker } from "@/components";
 
 export interface BrainDumpCardProps {
   text: string;
@@ -90,18 +88,7 @@ export const BrainDumpCard = forwardRef<
         <span className="mono ink-3" style={{ fontSize: 10 }}>
           tag:
         </span>
-        {TAG_OPTIONS.map((t) => (
-          <button
-            key={t}
-            className={`chip ${tag === t ? "accent" : ""}`}
-            onClick={() => onTagChange(tag === t ? null : t)}
-          >
-            {t}
-          </button>
-        ))}
-        <button className="chip" title="add custom tag (todo)">
-          +
-        </button>
+        <TagPicker value={tag} onChange={onTagChange} placeholder="pick tag" />
         <span
           className="mono ink-3"
           style={{ fontSize: 10, marginLeft: "auto" }}

@@ -40,7 +40,7 @@ export function ensurePill(): BrowserWindow {
     minimizable: false,
     maximizable: false,
     fullscreenable: false,
-    skipTaskbar: true,
+    skipTaskbar: false,
     alwaysOnTop: true,
     hasShadow: false,
     focusable: true,

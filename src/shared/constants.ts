@@ -40,6 +40,7 @@ export const WINDOW_KINDS = [
   "settings",
   "cheatsheet",
   "integration",
+  "eod",
 ] as const;
 export type WindowKind = (typeof WINDOW_KINDS)[number];
 

@@ -1,4 +1,4 @@
-import { Tray, Menu, app, nativeImage } from "electron";
+import { Tray, Menu, nativeImage } from "electron";
 import type { NativeImage } from "electron";
 import { SHORTCUTS } from "@shared/hotkeys";
 import type { ThemeId } from "@shared/types";
@@ -12,6 +12,7 @@ import {
 import { settings } from "../db/repos/settings";
 import { broadcast } from "../ipc/events";
 import { setAutoLaunch } from "./autolaunch";
+import { requestQuit } from "./quit";
 
 let tray: Tray | null = null;
 
@@ -137,7 +138,8 @@ export function rebuildMenu(): void {
     { type: "separator" },
     {
       label: "Quit Attensi Time Tracker",
-      click: () => app.quit(),
+      accelerator: SHORTCUTS.quitApp.win.replace(/\bCtrl\b/g, "Control"),
+      click: () => requestQuit(),
     },
   ]);
 

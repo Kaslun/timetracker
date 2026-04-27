@@ -25,6 +25,7 @@ nsis:
   allowToChangeInstallationDirectory: true
   deleteAppDataOnUninstall: false
   shortcutName: Attensi Time Tracker
+  include: build/installer.nsh
 portable:
   artifactName: AttensiTimeTracker-${version}-portable.exe
 nodeGypRebuild: false

@@ -9,8 +9,9 @@ import { ToastRoot } from "@/features/toast/ToastRoot";
 import { SettingsRoot } from "@/features/settings/SettingsRoot";
 import { CheatsheetRoot } from "@/features/cheatsheet/CheatsheetRoot";
 import { IntegrationRoot } from "@/features/integration/IntegrationRoot";
+import { EodRoot } from "@/features/eod/EodRoot";
 
-const TRANSPARENT_WINDOWS = new Set(["pill", "toast", "cheatsheet"]);
+const TRANSPARENT_WINDOWS = new Set(["pill", "toast", "cheatsheet", "eod"]);
 
 export function Bootstrap() {
   const ready = useStore((s) => s.ready);
@@ -52,6 +53,8 @@ export function Bootstrap() {
       return <CheatsheetRoot />;
     case "integration":
       return <IntegrationRoot />;
+    case "eod":
+      return <EodRoot />;
     default:
       return <ExpandedRoot />;
   }

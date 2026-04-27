@@ -16,6 +16,7 @@ interface Singletons {
   intro: BrowserWindow | null;
   settings: BrowserWindow | null;
   cheatsheet: BrowserWindow | null;
+  eod: BrowserWindow | null;
 }
 
 export const state: Singletons & {
@@ -28,6 +29,7 @@ export const state: Singletons & {
   intro: null,
   settings: null,
   cheatsheet: null,
+  eod: null,
   toasts: new Map(),
   integrations: new Map(),
 };
@@ -43,6 +45,7 @@ export function listAllWindows(): BrowserWindow[] {
     "intro",
     "settings",
     "cheatsheet",
+    "eod",
   ] as const) {
     const w = state[k];
     if (w && !w.isDestroyed()) list.push(w);

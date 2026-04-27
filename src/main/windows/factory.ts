@@ -13,7 +13,8 @@ export type WindowKind =
   | "settings"
   | "cheatsheet"
   | "toast"
-  | "integration";
+  | "integration"
+  | "eod";
 
 interface Options extends Omit<
   Electron.BrowserWindowConstructorOptions,

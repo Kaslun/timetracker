@@ -10,7 +10,7 @@ import {
 } from "../../src/shared/hotkeys";
 
 describe("SHORTCUTS", () => {
-  it("splits into 2 global + 5 in-app actions", () => {
+  it("splits into 3 global + 5 in-app actions", () => {
     const all = Object.keys(SHORTCUTS).sort();
     expect(all).toEqual(
       [
@@ -18,6 +18,7 @@ describe("SHORTCUTS", () => {
         "brainDumpGlobal",
         "cheatsheet",
         "expandWindow",
+        "quitApp",
         "switchTask",
         "toggleTimer",
         "toggleTimerLocal",
@@ -29,7 +30,9 @@ describe("SHORTCUTS", () => {
     const inapp = (Object.keys(SHORTCUTS) as ShortcutKey[]).filter(
       (k) => SHORTCUTS[k].scope === "inapp",
     );
-    expect(globals.sort()).toEqual(["brainDumpGlobal", "toggleTimer"].sort());
+    expect(globals.sort()).toEqual(
+      ["brainDumpGlobal", "quitApp", "toggleTimer"].sort(),
+    );
     expect(inapp.length).toBe(5);
   });
 
