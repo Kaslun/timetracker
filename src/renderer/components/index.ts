@@ -9,3 +9,4 @@ export { DigitRoll } from "./DigitRoll";
 export { ChevronRotate } from "./ChevronRotate";
 export { TagPicker } from "./TagPicker";
 export { TimeDisplay } from "./TimeDisplay";
+export { SourceTag } from "./SourceTag";

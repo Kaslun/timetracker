@@ -22,6 +22,8 @@ function row(
     projectName: "Project",
     projectColor: "#000",
     tag: null,
+    integrationId: null,
+    externalUrl: null,
     ...partial,
   };
 }

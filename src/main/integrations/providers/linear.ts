@@ -1,6 +1,8 @@
 import type { FillSuggestion, Project, Task } from "@shared/types";
-import type { ConnectInput } from "../types";
+import { buildExternalUrl } from "@shared/integrations/registry";
 import { newId } from "../../db";
+import { settings as settingsRepo } from "../../db/repos/settings";
+import type { ConnectInput } from "../types";
 import { BaseProvider } from "./base";
 
 /**
@@ -12,6 +14,11 @@ import { BaseProvider } from "./base";
  * state once the user connects. When the real backend lands, swap the body
  * of `validate` and `fetchTasks` for HTTP calls — the UI and IPC layers
  * don't need to change.
+ *
+ * Round-5 contract: `fetchTasks` MUST honour the per-provider
+ * `assigneeOnly` config (default true). The mock dataset emulates this by
+ * tagging the returned tasks with the connected workspace and only emitting
+ * tasks the "current user" would own.
  */
 export class LinearProvider extends BaseProvider {
   readonly id = "linear" as const;
@@ -37,6 +44,11 @@ export class LinearProvider extends BaseProvider {
     projects: Project[];
     tasks: Task[];
   }> {
+    const cfg = settingsRepo.getAll().integrationConfigs?.[this.id] ?? {
+      assigneeOnly: true,
+      includeUnassignedICreated: false,
+    };
+    const workspace = "attensi";
     const now = Date.now();
     const mobileId = newId("prj");
     const platformId = newId("prj");
@@ -58,30 +70,86 @@ export class LinearProvider extends BaseProvider {
         archivedAt: null,
       },
     ];
-    const tasks: Task[] = [
-      {
-        id: newId("tsk"),
-        projectId: mobileId,
-        ticket: "MOB-104",
-        title: "Fix iOS build crash on cold start",
-        tag: "dev",
-        archivedAt: null,
-        completedAt: null,
-        createdAt: now,
-        integrationId: this.id,
-      },
-      {
-        id: newId("tsk"),
-        projectId: platformId,
-        ticket: "PLT-281",
-        title: "Migrate auth tokens to keychain",
-        tag: "dev",
-        archivedAt: null,
-        completedAt: null,
-        createdAt: now,
-        integrationId: this.id,
-      },
-    ];
+    // Mock dataset: pretend "MOB-104" + "PLT-281" are assigned to the user
+    // and "PLT-300" is unassigned-but-created-by-them. The real implementation
+    // applies `assignee: { isMe: true }` (and an OR with `creator` if
+    // includeUnassignedICreated) at the GraphQL layer.
+    const all: Array<Task & { _assignedToMe: boolean; _createdByMe: boolean }> =
+      [
+        {
+          id: newId("tsk"),
+          projectId: mobileId,
+          ticket: "MOB-104",
+          title: "Fix iOS build crash on cold start",
+          tag: "dev",
+          archivedAt: null,
+          completedAt: null,
+          createdAt: now,
+          updatedAt: now,
+          integrationId: this.id,
+          priority: "high",
+          externalUrl: buildExternalUrl({
+            source: "linear",
+            ticket: "MOB-104",
+            workspace,
+          }),
+          _assignedToMe: true,
+          _createdByMe: false,
+        },
+        {
+          id: newId("tsk"),
+          projectId: platformId,
+          ticket: "PLT-281",
+          title: "Migrate auth tokens to keychain",
+          tag: "dev",
+          archivedAt: null,
+          completedAt: null,
+          createdAt: now,
+          updatedAt: now,
+          integrationId: this.id,
+          priority: "medium",
+          externalUrl: buildExternalUrl({
+            source: "linear",
+            ticket: "PLT-281",
+            workspace,
+          }),
+          _assignedToMe: true,
+          _createdByMe: true,
+        },
+        {
+          id: newId("tsk"),
+          projectId: platformId,
+          ticket: "PLT-300",
+          title: "Document onboarding flow",
+          tag: "docs",
+          archivedAt: null,
+          completedAt: null,
+          createdAt: now,
+          updatedAt: now,
+          integrationId: this.id,
+          priority: "low",
+          externalUrl: buildExternalUrl({
+            source: "linear",
+            ticket: "PLT-300",
+            workspace,
+          }),
+          _assignedToMe: false,
+          _createdByMe: true,
+        },
+      ];
+    const tasks: Task[] = all
+      .filter((t) => {
+        if (!cfg.assigneeOnly) return true;
+        if (t._assignedToMe) return true;
+        if (cfg.includeUnassignedICreated && t._createdByMe) return true;
+        return false;
+      })
+      // Strip the synthetic flags before returning.
+      .map(({ _assignedToMe: _a, _createdByMe: _c, ...rest }) => {
+        void _a;
+        void _c;
+        return rest;
+      });
     return { projects, tasks };
   }
 

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { PillShell } from "./PillShell";
 import { BrainDumpCard } from "./BrainDumpCard";
+import { TopPriorityBanner } from "./TopPriorityBanner";
 import { selectLiveElapsed, selectLiveTodaySec, useStore } from "@/store";
 import { rpc, on } from "@/lib/api";
 import { useInAppShortcuts } from "@/lib/useInAppShortcuts";
@@ -104,6 +105,7 @@ export function PillRoot() {
         padding: 0,
       }}
     >
+      <TopPriorityBanner />
       <PillShell
         current={current}
         elapsedSec={elapsedSec}

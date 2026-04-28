@@ -8,6 +8,7 @@ import {
   Dot,
   Ic,
   PlayPauseIcon,
+  SourceTag,
   Swatch,
 } from "@/components";
 
@@ -96,7 +97,14 @@ export function PillShell({
           minWidth: 0,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            minWidth: 0,
+          }}
+        >
           <Dot running={current.running} />
           <span
             style={{
@@ -110,6 +118,15 @@ export function PillShell({
           >
             {idle ? "No task running" : current.title}
           </span>
+          {!idle && (
+            <SourceTag
+              task={{
+                integrationId: current.integrationId,
+                externalUrl: current.externalUrl,
+              }}
+              compact
+            />
+          )}
         </div>
         <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
           <DigitRoll

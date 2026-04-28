@@ -22,7 +22,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import type { Project, TaskWithProject } from "@shared/types";
-import { Ic, Swatch, TimeDisplay } from "@/components";
+import { Ic, SourceTag, Swatch, TimeDisplay } from "@/components";
 import { rpc } from "@/lib/api";
 import { formatElapsed } from "@/lib/time";
 import { useStore } from "@/store";
@@ -85,11 +85,7 @@ export function TaskRow({
       <Swatch color={task.projectColor} />
 
       {editing ? (
-        <TaskEditForm
-          task={task}
-          projects={projects}
-          onCancel={onCancelEdit}
-        />
+        <TaskEditForm task={task} projects={projects} onCancel={onCancelEdit} />
       ) : (
         <ViewBlock task={task} isDone={isDone} isImported={isImported} />
       )}
@@ -134,10 +130,11 @@ export function TaskRow({
 function ViewBlock({
   task,
   isDone,
-  isImported,
 }: {
   task: TaskWithProject;
   isDone: boolean;
+  /** Kept for prop-shape compatibility with callers; unused now that the
+   *  source chip handles the imported-vs-local distinction. */
   isImported: boolean;
 }) {
   return (
@@ -164,20 +161,7 @@ function ViewBlock({
         >
           {task.title}
         </span>
-        {isImported ? (
-          <span
-            className="chip"
-            title="Imported from Linear — edit the title and ticket key in Linear."
-            style={{
-              fontSize: 9,
-              padding: "0 5px",
-              height: 14,
-              flexShrink: 0,
-            }}
-          >
-            ↗ {task.integrationId}
-          </span>
-        ) : null}
+        <SourceTag task={task} />
       </div>
       <div className="mono ink-3" style={{ fontSize: 10, marginTop: 2 }}>
         {task.ticket ?? "—"} · {task.projectName}

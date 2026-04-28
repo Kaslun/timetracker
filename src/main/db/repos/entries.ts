@@ -4,6 +4,11 @@ import type {
   EntrySource,
   CurrentTaskView,
 } from "@shared/types";
+import {
+  resolveConflict,
+  splitAround,
+  type ConflictOutcome,
+} from "@shared/lib/timeline";
 import { db, newId } from "../index";
 import { startOfDay } from "../utils";
 
@@ -23,6 +28,8 @@ interface JoinedRow extends Row {
   project_name: string;
   project_color: string;
   tag: string | null;
+  integration_id: string | null;
+  external_url: string | null;
 }
 
 const map = (r: Row): Entry => ({
@@ -42,6 +49,8 @@ const mapJoined = (r: JoinedRow): EntryRow => ({
   projectName: r.project_name,
   projectColor: r.project_color,
   tag: r.tag,
+  integrationId: r.integration_id,
+  externalUrl: r.external_url,
 });
 
 export const entries = {
@@ -139,6 +148,116 @@ export const entries = {
     db().prepare("DELETE FROM entries WHERE id = ?").run(id);
   },
 
+  /**
+   * Closed entries within a window. Used by overlap detection — keeps the
+   * comparison set small (one day on either side of the proposed range
+   * unless the range is huge, in which case we widen it).
+   */
+  closedInRange(from: number, to: number): Entry[] {
+    return (
+      db()
+        .prepare(
+          `SELECT * FROM entries
+           WHERE ended_at IS NOT NULL
+             AND started_at < @to
+             AND ended_at > @from`,
+        )
+        .all({ from, to }) as Row[]
+    ).map(map);
+  },
+
+  /**
+   * Decide whether `proposed` overlaps existing closed entries.
+   *   - `kind: "ok"`     no neighbour in the way.
+   *   - `kind: "trim"`   overlap touches only an edge; auto-trimming the
+   *                      proposed range fits without dropping below the
+   *                      minimum duration.
+   *   - `kind: "conflict"` proposed range straddles a neighbour entirely
+   *                      (or a trim would go below MIN_DURATION_MS).
+   */
+  proposeRange(input: {
+    startedAt: number;
+    endedAt: number;
+    excludeId?: string;
+  }): ConflictOutcome<Entry> {
+    const padding = 60 * 60_000; // 1 hour
+    const others = entries.closedInRange(
+      input.startedAt - padding,
+      input.endedAt + padding,
+    );
+    return resolveConflict(input, others, input.excludeId);
+  },
+
+  /**
+   * Apply a "split" resolution: trim every overlapping neighbour to the
+   * proposed range's boundaries. Returns the number of pieces created.
+   * Used when the user picks "Split" in the conflict dialog.
+   */
+  splitConflicting(input: {
+    startedAt: number;
+    endedAt: number;
+    excludeId?: string;
+  }): number {
+    const padding = 60 * 60_000;
+    const others = entries.closedInRange(
+      input.startedAt - padding,
+      input.endedAt + padding,
+    );
+    let pieces = 0;
+    for (const o of others) {
+      if (input.excludeId && o.id === input.excludeId) continue;
+      if (o.endedAt === null) continue;
+      const remaining = splitAround(
+        { startedAt: o.startedAt, endedAt: o.endedAt },
+        input,
+      );
+      if (
+        remaining.length === 1 &&
+        remaining[0].startedAt === o.startedAt &&
+        remaining[0].endedAt === o.endedAt
+      ) {
+        // No actual split (proposed didn't actually overlap this row).
+        continue;
+      }
+      // Remove the original; insert each remaining piece.
+      entries.delete(o.id);
+      for (const piece of remaining) {
+        entries.insert({
+          taskId: o.taskId,
+          startedAt: piece.startedAt,
+          endedAt: piece.endedAt,
+          source: o.source,
+          note: o.note,
+        });
+        pieces++;
+      }
+    }
+    return pieces;
+  },
+
+  /** Replace: delete every overlapping neighbour outright. */
+  deleteConflicting(input: {
+    startedAt: number;
+    endedAt: number;
+    excludeId?: string;
+  }): number {
+    const padding = 60 * 60_000;
+    const others = entries.closedInRange(
+      input.startedAt - padding,
+      input.endedAt + padding,
+    );
+    let deleted = 0;
+    for (const o of others) {
+      if (input.excludeId && o.id === input.excludeId) continue;
+      const oEnd = o.endedAt ?? Number.POSITIVE_INFINITY;
+      if (o.startedAt < input.endedAt && oEnd > input.startedAt) {
+        entries.delete(o.id);
+        deleted++;
+      }
+    }
+    return deleted;
+  },
+
   list(
     filter: { from?: number; to?: number; taskId?: string } = {},
   ): EntryRow[] {
@@ -163,6 +282,8 @@ export const entries = {
         t.title AS task_title,
         t.ticket,
         t.tag,
+        t.integration_id,
+        t.external_url,
         p.id    AS project_id,
         p.name  AS project_name,
         p.color AS project_color
@@ -200,10 +321,13 @@ export const entries = {
         running: false,
         entryId: null,
         startedAt: null,
+        integrationId: null,
+        externalUrl: null,
       };
     }
     const sql = `
-      SELECT t.id, t.title, t.ticket, p.name AS project_name, p.color AS project_color
+      SELECT t.id, t.title, t.ticket, t.integration_id, t.external_url,
+             p.name AS project_name, p.color AS project_color
       FROM tasks t
       JOIN projects p ON p.id = t.project_id
       WHERE t.id = ?
@@ -213,6 +337,8 @@ export const entries = {
           id: string;
           title: string;
           ticket: string | null;
+          integration_id: string | null;
+          external_url: string | null;
           project_name: string;
           project_color: string;
         }
@@ -229,6 +355,8 @@ export const entries = {
       running: true,
       entryId: open.id,
       startedAt: open.startedAt,
+      integrationId: row?.integration_id ?? null,
+      externalUrl: row?.external_url ?? null,
     };
   },
 };

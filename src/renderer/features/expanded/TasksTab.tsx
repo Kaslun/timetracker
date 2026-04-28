@@ -1,19 +1,51 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { TaskWithProject } from "@shared/types";
+import { DEFAULT_TASK_FILTERS, MAX_SAVED_TASK_VIEWS } from "@shared/constants";
+import { applyTaskFilters, sortTasks } from "@shared/lib/taskFilter";
+import type {
+  SavedTaskView,
+  TaskFilters,
+  TaskWithProject,
+} from "@shared/types";
 import { TaskRow } from "./TaskRow";
-import { useStore } from "@/store";
-import { EmptyState, Ic } from "@/components";
+import { TasksControlBar } from "./TasksControlBar";
+import { EmptyState } from "@/components";
 import { rpc, on } from "@/lib/api";
 import { formatHM } from "@/lib/time";
+import { useStore } from "@/store";
 
 export function TasksTab() {
   const tasks = useStore((s) => s.tasks);
   const projects = useStore((s) => s.projects);
-  const [query, setQuery] = useState("");
+  const settings = useStore((s) => s.settings);
+  const patchSettings = useStore((s) => s.patchSettings);
+
+  // Local mirror of the persisted filter — keeps typing in the search input
+  // snappy while we debounce the write to settings.
+  const [filters, setFilters] = useState<TaskFilters>(
+    settings.taskFilters ?? DEFAULT_TASK_FILTERS,
+  );
   const [showCreate, setShowCreate] = useState(false);
   const [newProjectId, setNewProjectId] = useState<string>("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Debounce filter writes — typing in the search box should not punch the
+  // SQLite settings table on every keystroke. 300 ms feels instant but
+  // collapses the typical "type then pause" pattern into one IPC call.
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      const persisted = settings.taskFilters;
+      if (JSON.stringify(persisted) === JSON.stringify(filters)) return;
+      void patchSettings({ taskFilters: filters });
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [filters, patchSettings, settings.taskFilters]);
+
+  // Keep local state in sync if settings update from elsewhere (rare — but
+  // multiple windows could conceivably edit the same field).
+  useEffect(() => {
+    setFilters(settings.taskFilters ?? DEFAULT_TASK_FILTERS);
+  }, [settings.taskFilters]);
 
   useEffect(() => {
     const off = on("expanded:focus-search", () => inputRef.current?.focus());
@@ -25,27 +57,13 @@ export function TasksTab() {
     };
   }, []);
 
-  const todayLogged = tasks.reduce((acc, t) => acc + t.todaySec, 0);
+  // Run filter then sort. Both are pure shared helpers; tests live in
+  // tests/unit/taskFilter.test.ts.
+  const visible = useMemo(() => {
+    return sortTasks(applyTaskFilters(tasks, filters), filters.sort);
+  }, [tasks, filters]);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return tasks;
-    return tasks.filter(
-      (t) =>
-        t.title.toLowerCase().includes(q) ||
-        t.projectName.toLowerCase().includes(q) ||
-        (t.ticket?.toLowerCase().includes(q) ?? false),
-    );
-  }, [query, tasks]);
-
-  const start = (t: TaskWithProject) => async (): Promise<void> => {
-    if (t.completedAt) return;
-    if (t.active) {
-      await useStore.getState().pause();
-    } else {
-      await useStore.getState().start(t.id);
-    }
-  };
+  const todayLogged = visible.reduce((acc, t) => acc + t.todaySec, 0);
 
   const toggleComplete = async (t: TaskWithProject): Promise<void> => {
     await rpc("task:setCompleted", {
@@ -59,14 +77,39 @@ export function TasksTab() {
   };
 
   const onCreate = async (): Promise<void> => {
-    const title = query.trim();
+    const title = filters.query.trim();
     if (!title || !newProjectId) return;
     await rpc("task:create", { projectId: newProjectId, title });
-    setQuery("");
+    setFilters({ ...filters, query: "" });
     setShowCreate(false);
   };
 
-  const showCreateRow = query.trim().length > 0 && filtered.length === 0;
+  const showCreateRow = filters.query.trim().length > 0 && visible.length === 0;
+
+  // Saved-view operations are local mutations on Settings.savedTaskViews.
+  // We give each view a stable id so the chip key survives re-render.
+  const onSaveView = async (name: string): Promise<void> => {
+    const existing = settings.savedTaskViews ?? [];
+    if (existing.length >= MAX_SAVED_TASK_VIEWS) return;
+    const view: SavedTaskView = {
+      id: `view-${Date.now().toString(36)}`,
+      name: name.slice(0, 40),
+      filters: { ...filters },
+    };
+    await patchSettings({ savedTaskViews: [...existing, view] });
+  };
+
+  const onDeleteView = async (id: string): Promise<void> => {
+    const next = (settings.savedTaskViews ?? []).filter((v) => v.id !== id);
+    await patchSettings({ savedTaskViews: next });
+  };
+
+  const onApplyView = (view: SavedTaskView): void => {
+    setFilters({ ...view.filters });
+  };
+
+  const empty = visible.length === 0 && !showCreateRow;
+  const hasFilterUnmatched = empty && tasks.length > 0;
 
   return (
     <div
@@ -77,34 +120,16 @@ export function TasksTab() {
         overflow: "hidden",
       }}
     >
-      <div
-        style={{
-          padding: "12px 16px",
-          borderBottom: "1px solid var(--line)",
-          display: "flex",
-          gap: 8,
-          alignItems: "center",
-        }}
-      >
-        <Ic.Search s={13} />
-        <input
-          ref={inputRef}
-          className="input"
-          placeholder="Switch task · paste Linear/Jira url · or type new"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              if (showCreateRow && newProjectId) void onCreate();
-              else if (filtered[0]) void start(filtered[0])();
-            }
-          }}
-          style={{ fontSize: 12, flex: 1 }}
-        />
-        <span className="kbd" title="Press S to focus this list (in-app)">
-          S
-        </span>
-      </div>
+      <TasksControlBar
+        filters={filters}
+        onChange={setFilters}
+        projects={projects}
+        savedViews={settings.savedTaskViews ?? []}
+        onSaveView={onSaveView}
+        onApplyView={onApplyView}
+        onDeleteView={onDeleteView}
+      />
+
       <div className="scroll" style={{ flex: 1, overflow: "auto" }}>
         <div
           style={{
@@ -124,14 +149,17 @@ export function TasksTab() {
               textTransform: "uppercase",
             }}
           >
-            Today · {tasks.length} tasks
+            Tasks · {visible.length}
+            {visible.length !== tasks.length && (
+              <span className="ink-3"> of {tasks.length}</span>
+            )}
           </span>
           <span className="mono num ink-3" style={{ fontSize: 10 }}>
-            {formatHM(todayLogged)}
+            {formatHM(todayLogged)} today
           </span>
         </div>
 
-        {tasks.length === 0 && !showCreateRow ? (
+        {empty && tasks.length === 0 ? (
           <EmptyState
             title="No tasks yet"
             hint={
@@ -152,7 +180,22 @@ export function TasksTab() {
           />
         ) : null}
 
-        {filtered.map((t) => (
+        {hasFilterUnmatched && (
+          <EmptyState
+            title="No tasks match these filters"
+            hint="Clear filters or try a different combination."
+            action={
+              <button
+                className="btn"
+                onClick={() => setFilters({ ...DEFAULT_TASK_FILTERS })}
+              >
+                Clear filters
+              </button>
+            }
+          />
+        )}
+
+        {visible.map((t) => (
           <TaskRow
             key={t.id}
             task={t}
@@ -176,7 +219,7 @@ export function TasksTab() {
             }}
           >
             <div style={{ fontSize: 12, color: "var(--ink-2)" }}>
-              No matches — create a new task “{query}”?
+              No matches — create a new task “{filters.query}”?
             </div>
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
               <select
@@ -210,7 +253,7 @@ export function TasksTab() {
           </div>
         )}
 
-        {!showCreate && (
+        {!showCreate && visible.length > 0 && (
           <div style={{ padding: "16px 16px 6px" }}>
             <span
               className="display"
@@ -222,7 +265,18 @@ export function TasksTab() {
                 textTransform: "uppercase",
               }}
             >
-              Recent · past 7 days
+              Showing{" "}
+              {filters.sort === "suggested"
+                ? "suggested order"
+                : filters.sort === "updated"
+                  ? "most-recently updated"
+                  : filters.sort === "priority"
+                    ? "highest priority first"
+                    : filters.sort === "tracked"
+                      ? "most time tracked"
+                      : filters.sort === "alpha"
+                        ? "alphabetical"
+                        : "creation date"}
             </span>
           </div>
         )}

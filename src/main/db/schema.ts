@@ -105,6 +105,61 @@ const MIGRATIONS: Migration[] = [
       }
     },
   },
+  {
+    version: 5,
+    up: (db) => {
+      // Round-5 additions: per-task priority + canonical source URL +
+      // explicit updated_at column (so "recently updated" sort works without
+      // having to look at entries). Plus the integration_sync log table that
+      // backs the request budget UI and Tempo idempotency.
+      const cols = db.prepare("PRAGMA table_info(tasks)").all() as {
+        name: string;
+      }[];
+      if (!cols.some((c) => c.name === "priority")) {
+        db.exec(
+          `ALTER TABLE tasks ADD COLUMN priority TEXT NOT NULL DEFAULT 'none'`,
+        );
+      }
+      if (!cols.some((c) => c.name === "external_url")) {
+        db.exec(`ALTER TABLE tasks ADD COLUMN external_url TEXT`);
+      }
+      if (!cols.some((c) => c.name === "updated_at")) {
+        // Backfill to created_at so existing rows get a sensible default.
+        db.exec(`ALTER TABLE tasks ADD COLUMN updated_at INTEGER`);
+        db.exec(
+          `UPDATE tasks SET updated_at = created_at WHERE updated_at IS NULL`,
+        );
+      }
+
+      // Tempo worklog idempotency: maps a local entry to a remote worklog id
+      // so re-syncing updates rather than duplicates. Conflict marker stays
+      // null until detection finds a remote-side edit.
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS entry_sync (
+          entry_id          TEXT PRIMARY KEY REFERENCES entries(id) ON DELETE CASCADE,
+          provider          TEXT NOT NULL,
+          remote_id         TEXT NOT NULL,
+          remote_updated_at INTEGER,
+          synced_at         INTEGER NOT NULL,
+          conflict          INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE INDEX IF NOT EXISTS entry_sync_provider_idx ON entry_sync(provider);
+      `);
+
+      // Per-provider request budget bookkeeping (ETag cache + last cursor).
+      // Used by the cache layer + the debug panel.
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS integration_cache (
+          provider     TEXT NOT NULL,
+          resource     TEXT NOT NULL,
+          etag         TEXT,
+          updated_at   INTEGER NOT NULL,
+          payload      TEXT NOT NULL,
+          PRIMARY KEY (provider, resource)
+        );
+      `);
+    },
+  },
 ];
 
 export function runMigrations(db: Db): void {

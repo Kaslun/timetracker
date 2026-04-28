@@ -1,7 +1,7 @@
 import type { NudgeSettings } from "@shared/types";
 import { Toggle } from "../Toggle";
 import { SectionHeading, SectionTitle } from "../Field";
-import { Ic } from "@/components";
+import { WorkHoursEditor } from "./WorkHoursEditor";
 import { useStore } from "@/store";
 
 const NUDGE_ITEMS: ReadonlyArray<{
@@ -84,49 +84,13 @@ export function NudgesSection() {
 
       <SectionHeading>Work hours</SectionHeading>
       <div className="ink-3" style={{ fontSize: 11, marginBottom: 8 }}>
-        Nudges only fire inside this window. Leave it off to allow nudges 24/7.
+        Nudges only fire inside this window. Each day can have its own schedule,
+        with up to three ranges (handy for a lunch break).
       </div>
-      <div
-        style={{
-          display: "flex",
-          gap: 8,
-          alignItems: "center",
-          flexWrap: "wrap",
-        }}
-      >
-        <span className="chip">
-          {settings.workHours?.days.join(" · ") ?? "off"}
-        </span>
-        <span className="mono num" style={{ fontSize: 12 }}>
-          {settings.workHours?.from ?? "—"}
-        </span>
-        <span className="ink-3" style={{ fontSize: 11 }}>
-          to
-        </span>
-        <span className="mono num" style={{ fontSize: 12 }}>
-          {settings.workHours?.to ?? "—"}
-        </span>
-        <span style={{ flex: 1 }} />
-        <button
-          className="btn ghost icon"
-          onClick={() =>
-            void patchSettings({
-              workHours: settings.workHours
-                ? null
-                : {
-                    days: ["Mon", "Tue", "Wed", "Thu", "Fri"],
-                    from: "09:00",
-                    to: "17:00",
-                  },
-            })
-          }
-          title={
-            settings.workHours ? "Disable work hours" : "Enable work hours"
-          }
-        >
-          {settings.workHours ? <Ic.Close s={12} /> : <Ic.Plus s={12} />}
-        </button>
-      </div>
+      <WorkHoursEditor
+        value={settings.workHours}
+        onChange={(next) => void patchSettings({ workHours: next })}
+      />
 
       <div
         style={{

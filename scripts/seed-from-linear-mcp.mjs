@@ -12,9 +12,16 @@
 //
 // Optional flags:
 //
-//     --user-data <path>   Override app.getPath('userData')
-//     --keep-wal           Don't delete the WAL/SHM siblings
-//     --dry-run            Print what would happen and exit
+//     --user-data <path>          Override app.getPath('userData')
+//     --keep-wal                  Don't delete the WAL/SHM siblings
+//     --dry-run                   Print what would happen and exit
+//     --include-unassigned        Also seed tasks the snapshot user *created*
+//                                 but hasn't been assigned (mirrors the per-
+//                                 provider config flag).
+//
+// Round-5 contract: this seed only loads issues the snapshot's `assignee`
+// owns. The snapshot itself is captured assignee-scoped via the Linear MCP
+// (`assignee: { isMe: true }`) — DO NOT re-capture it without that filter.
 //
 // Implementation notes:
 // - We don't import anything from src/main because that pulls in Electron's
@@ -72,15 +79,21 @@ const DB_FILENAME = "timetracker.sqlite";
 const INTEGRATION_ID = "linear";
 
 function parseArgs(argv) {
-  const out = { userData: null, keepWal: false, dryRun: false };
+  const out = {
+    userData: null,
+    keepWal: false,
+    dryRun: false,
+    includeUnassigned: false,
+  };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--user-data") out.userData = argv[++i] ?? null;
     else if (a === "--keep-wal") out.keepWal = true;
     else if (a === "--dry-run") out.dryRun = true;
+    else if (a === "--include-unassigned") out.includeUnassigned = true;
     else if (a === "--help" || a === "-h") {
       console.log(
-        "Usage: node scripts/seed-from-linear-mcp.mjs [--user-data <path>] [--keep-wal] [--dry-run]",
+        "Usage: node scripts/seed-from-linear-mcp.mjs [--user-data <path>] [--keep-wal] [--dry-run] [--include-unassigned]",
       );
       process.exit(0);
     }
@@ -197,6 +210,32 @@ const MIGRATIONS = [
     version: 4,
     sql: `ALTER TABLE tasks ADD COLUMN integration_id TEXT`,
   },
+  {
+    version: 5,
+    sql: `
+      ALTER TABLE tasks ADD COLUMN priority TEXT NOT NULL DEFAULT 'none';
+      ALTER TABLE tasks ADD COLUMN external_url TEXT;
+      ALTER TABLE tasks ADD COLUMN updated_at INTEGER;
+      UPDATE tasks SET updated_at = created_at WHERE updated_at IS NULL;
+      CREATE TABLE IF NOT EXISTS entry_sync (
+        entry_id          TEXT PRIMARY KEY REFERENCES entries(id) ON DELETE CASCADE,
+        provider          TEXT NOT NULL,
+        remote_id         TEXT NOT NULL,
+        remote_updated_at INTEGER,
+        synced_at         INTEGER NOT NULL,
+        conflict          INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE INDEX IF NOT EXISTS entry_sync_provider_idx ON entry_sync(provider);
+      CREATE TABLE IF NOT EXISTS integration_cache (
+        provider     TEXT NOT NULL,
+        resource     TEXT NOT NULL,
+        etag         TEXT,
+        updated_at   INTEGER NOT NULL,
+        payload      TEXT NOT NULL,
+        PRIMARY KEY (provider, resource)
+      );
+    `,
+  },
 ];
 
 function runMigrations(db) {
@@ -286,9 +325,39 @@ async function main() {
      VALUES (@id, @name, @color, @ticketPrefix, @integrationId, @archivedAt)`,
   );
   const insertTask = db.prepare(
-    `INSERT INTO tasks (id, project_id, ticket, title, tag, archived_at, completed_at, created_at, integration_id)
-     VALUES (@id, @projectId, @ticket, @title, @tag, @archivedAt, @completedAt, @createdAt, @integrationId)`,
+    `INSERT INTO tasks (
+       id, project_id, ticket, title, tag,
+       archived_at, completed_at, created_at, updated_at,
+       integration_id, priority, external_url
+     )
+     VALUES (
+       @id, @projectId, @ticket, @title, @tag,
+       @archivedAt, @completedAt, @createdAt, @updatedAt,
+       @integrationId, @priority, @externalUrl
+     )`,
   );
+
+  // Round-5 priority remap: Linear `1` is urgent, `2` high, `3` medium,
+  // `4` low, anything else `none`. Snapshot may carry the literal string
+  // already (preferred) or the numeric scale.
+  function mapPriority(raw) {
+    if (raw === "urgent" || raw === "high" || raw === "medium" || raw === "low" || raw === "none") {
+      return raw;
+    }
+    if (raw === 1) return "urgent";
+    if (raw === 2) return "high";
+    if (raw === 3) return "medium";
+    if (raw === 4) return "low";
+    return "none";
+  }
+
+  function buildLinearUrl(ticket, workspace) {
+    if (!ticket || !workspace) return null;
+    return `https://linear.app/${workspace}/issue/${ticket}`;
+  }
+
+  const workspaceSlug = snapshot.workspace || "attensi";
+  const snapshotAssignee = snapshot.assignee ?? null;
 
   const trx = db.transaction(() => {
     const usedTeamIds = new Set(issues.map((i) => i.teamId));
@@ -306,7 +375,20 @@ async function main() {
       });
     }
     const now = Date.now();
+    let skippedUnassigned = 0;
     for (const issue of issues) {
+      // Round-5: assignee-scoped seeding. The snapshot is captured filtered
+      // by `assignee: { isMe: true }`; this is a defence-in-depth guard for
+      // any older snapshot that included extra issues. With
+      // `--include-unassigned`, fall back to the snapshot user as creator.
+      if (snapshotAssignee && issue.assignee) {
+        if (issue.assignee !== snapshotAssignee) {
+          if (!args.includeUnassigned || issue.creator !== snapshotAssignee) {
+            skippedUnassigned++;
+            continue;
+          }
+        }
+      }
       const projectId = teamById.get(issue.teamId);
       if (!projectId) {
         console.warn(`  skipped issue ${issue.id} — unknown team`);
@@ -321,8 +403,16 @@ async function main() {
         archivedAt: null,
         completedAt: null,
         createdAt: now,
+        updatedAt: now,
         integrationId: INTEGRATION_ID,
+        priority: mapPriority(issue.priority),
+        externalUrl: buildLinearUrl(issue.id, workspaceSlug),
       });
+    }
+    if (skippedUnassigned > 0) {
+      console.log(
+        `  skipped ${skippedUnassigned} issue(s) not assigned to ${snapshotAssignee}`,
+      );
     }
   });
   trx();

@@ -33,6 +33,14 @@ export const ZProject = z.object({
   archivedAt: z.number().nullable(),
 });
 
+export const ZTaskPriority = z.enum([
+  "urgent",
+  "high",
+  "medium",
+  "low",
+  "none",
+]);
+
 export const ZTask = z.object({
   id: z.string(),
   projectId: z.string(),
@@ -42,13 +50,17 @@ export const ZTask = z.object({
   archivedAt: z.number().nullable(),
   completedAt: z.number().nullable(),
   createdAt: z.number(),
+  updatedAt: z.number(),
   integrationId: z.string().nullable(),
+  priority: ZTaskPriority,
+  externalUrl: z.string().nullable(),
 });
 
 export const ZTaskWithProject = ZTask.extend({
   projectName: z.string(),
   projectColor: z.string(),
   todaySec: z.number(),
+  totalSec: z.number(),
   active: z.boolean(),
 });
 
@@ -75,6 +87,8 @@ export const ZEntryRow = ZEntry.extend({
   projectName: z.string(),
   projectColor: z.string(),
   tag: z.string().nullable(),
+  integrationId: z.string().nullable(),
+  externalUrl: z.string().nullable(),
 });
 
 export const ZCapture = z.object({
@@ -96,6 +110,8 @@ export const ZCurrentTaskView = z.object({
   running: z.boolean(),
   entryId: z.string().nullable(),
   startedAt: z.number().nullable(),
+  integrationId: z.string().nullable(),
+  externalUrl: z.string().nullable(),
 });
 
 const ZNudgeSettings = z.object({
@@ -106,13 +122,61 @@ const ZNudgeSettings = z.object({
   contextSwitchConfirm: z.boolean(),
 });
 
-const ZWorkHours = z
-  .object({
-    days: z.array(z.enum(["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"])),
-    from: z.string(),
-    to: z.string(),
-  })
-  .nullable();
+const ZWorkHoursRange = z.object({
+  from: z.string(),
+  to: z.string(),
+});
+
+const ZWorkHoursDay = z.object({
+  enabled: z.boolean(),
+  ranges: z.array(ZWorkHoursRange),
+});
+
+const ZWorkHours = z.object({
+  Mon: ZWorkHoursDay,
+  Tue: ZWorkHoursDay,
+  Wed: ZWorkHoursDay,
+  Thu: ZWorkHoursDay,
+  Fri: ZWorkHoursDay,
+  Sat: ZWorkHoursDay,
+  Sun: ZWorkHoursDay,
+});
+
+const ZTaskFilters = z.object({
+  query: z.string(),
+  projectIds: z.array(z.string()),
+  sources: z.array(z.string()),
+  tags: z.array(z.string()),
+  status: z.enum(["active", "archived", "all"]),
+  priorities: z.array(ZTaskPriority),
+  sort: z.enum([
+    "suggested",
+    "updated",
+    "priority",
+    "tracked",
+    "alpha",
+    "created",
+  ]),
+});
+
+const ZSavedTaskView = z.object({
+  id: z.string(),
+  name: z.string(),
+  filters: ZTaskFilters,
+});
+
+const ZTempoConfig = z.object({
+  enabled: z.boolean(),
+  detected: z.boolean(),
+  dryRun: z.boolean(),
+  intervalMinutes: z.number(),
+});
+
+const ZIntegrationConfig = z.object({
+  assigneeOnly: z.boolean(),
+  includeUnassignedICreated: z.boolean(),
+  tempo: ZTempoConfig.optional(),
+});
 
 const ZPillPosition = z.object({ x: z.number(), y: z.number() });
 
@@ -145,6 +209,9 @@ export const ZSettings = z.object({
   expandedTabOrder: z.array(z.string()),
   shortcutOverrides: z.record(z.string(), ZShortcutOverride),
   windowBounds: z.record(z.string(), ZWindowBounds),
+  taskFilters: ZTaskFilters,
+  savedTaskViews: z.array(ZSavedTaskView),
+  integrationConfigs: z.record(z.string(), ZIntegrationConfig),
 });
 
 export const ZIntegrationId = z.enum([
@@ -209,6 +276,17 @@ export const ZNudgeEvent = z.discriminatedUnion("kind", [
   ZIdleNudge,
   ZRetroNudge,
 ]);
+
+/** Daily "top priority for today" nudge payload. Fires once per work-day. */
+export const ZTopPriorityNudge = z.object({
+  kind: z.literal("top_priority"),
+  taskId: z.string(),
+  taskTitle: z.string(),
+  ticket: z.string().nullable(),
+  projectName: z.string(),
+  projectColor: z.string(),
+  priority: ZTaskPriority,
+});
 
 export const ZBootstrap = z.object({
   settings: ZSettings,

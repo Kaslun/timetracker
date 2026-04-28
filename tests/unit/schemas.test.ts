@@ -90,6 +90,8 @@ describe("ZCurrentTaskView", () => {
       running: false,
       entryId: null,
       startedAt: null,
+      integrationId: null,
+      externalUrl: null,
     };
     expect(ZCurrentTaskView.safeParse(idle).success).toBe(true);
   });
@@ -110,6 +112,8 @@ describe("ZBootstrap", () => {
         running: false,
         entryId: null,
         startedAt: null,
+        integrationId: null,
+        externalUrl: null,
       },
       tasks: [],
       todayEntries: [],

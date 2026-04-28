@@ -1,12 +1,86 @@
+import type { ConflictOutcome } from "@shared/lib/timeline";
+import type { Entry, EntryRow } from "@shared/types";
 import { entries, tasks, projects } from "../db/repos";
 import { startOfDay } from "../db/utils";
 import { db } from "../db";
 import { register } from "./handlers";
 import { broadcastChanges } from "./broadcast";
 
+type Resolution = "auto" | "replace" | "split" | "force";
+
+/**
+ * If `now` falls inside a manually-logged closed entry, push the new
+ * timer's start to the end of that block so we don't silently overlap.
+ * The task is still "running"; it just begins from the boundary forward.
+ * Renderer can prompt for replace/split via `entry:proposeRange` before
+ * calling start if it wants the explicit dialog.
+ */
+function pickNonOverlappingStart(now: number): number {
+  const recent = entries.closedInRange(now - 24 * 60 * 60_000, now + 1);
+  for (const e of recent) {
+    if (e.endedAt === null) continue;
+    if (e.startedAt <= now && e.endedAt > now) {
+      return e.endedAt;
+    }
+  }
+  return now;
+}
+
+/**
+ * Apply the chosen overlap-resolution before writing an entry to the DB.
+ * Returns the (possibly trimmed) range to actually persist.
+ *
+ *   - `auto`    trim if it fits, otherwise throw "OVERLAP_CONFLICT".
+ *   - `replace` delete every overlapping neighbour, write as proposed.
+ *   - `split`   trim every overlapping neighbour around the proposed range.
+ *   - `force`   bypass overlap rules entirely (used by Tempo round-trip /
+ *               legacy import paths). Avoid in normal UI flows.
+ */
+function applyResolution(args: {
+  startedAt: number;
+  endedAt: number;
+  excludeId?: string;
+  resolution: Resolution;
+}): { startedAt: number; endedAt: number } {
+  const { startedAt, endedAt, excludeId, resolution } = args;
+  if (resolution === "force") return { startedAt, endedAt };
+  const outcome = entries.proposeRange({ startedAt, endedAt, excludeId });
+  if (outcome.kind === "ok") return { startedAt, endedAt };
+  if (outcome.kind === "trim") {
+    return outcome.adjusted;
+  }
+  if (resolution === "replace") {
+    entries.deleteConflicting({ startedAt, endedAt, excludeId });
+    return { startedAt, endedAt };
+  }
+  if (resolution === "split") {
+    entries.splitConflicting({ startedAt, endedAt, excludeId });
+    return { startedAt, endedAt };
+  }
+  throw new Error("OVERLAP_CONFLICT");
+}
+
+/**
+ * Hydrate the bare `Entry` rows in a `conflict` outcome into joined
+ * `EntryRow` shapes (with task title, project, etc.) so the renderer can
+ * render the conflict dialog without a follow-up round trip.
+ */
+function enrichConflicts(
+  outcome: ConflictOutcome<Entry>,
+): ConflictOutcome<EntryRow> {
+  if (outcome.kind !== "conflict") return outcome;
+  const ids = new Set(outcome.conflictsWith.map((c) => c.id));
+  if (ids.size === 0) return { kind: "conflict", conflictsWith: [] };
+  const all = entries.list({});
+  const enriched = all.filter((e) => ids.has(e.id));
+  return { kind: "conflict", conflictsWith: enriched };
+}
+
 export function registerTimer(): void {
   register("task:start", ({ taskId }) => {
-    entries.start({ taskId });
+    const now = Date.now();
+    const startedAt = pickNonOverlappingStart(now);
+    entries.start({ taskId, startedAt });
     broadcastChanges({ current: true, tasks: true, entries: true });
     return entries.currentView();
   });
@@ -31,7 +105,9 @@ export function registerTimer(): void {
   });
 
   register("task:switch", ({ taskId }) => {
-    entries.start({ taskId });
+    const now = Date.now();
+    const startedAt = pickNonOverlappingStart(now);
+    entries.start({ taskId, startedAt });
     broadcastChanges({ current: true, tasks: true, entries: true });
     return entries.currentView();
   });
@@ -104,7 +180,20 @@ export function registerTimer(): void {
   });
 
   register("entry:list", (input) => entries.list(input));
-  register("entry:update", ({ id, patch }) => {
+  register("entry:update", ({ id, patch, resolution }) => {
+    // If start/end is being patched, run conflict resolution against the
+    // proposed bounds (excluding this entry from the comparison set).
+    const cur = entries.list({}).find((e) => e.id === id);
+    const startedAt = patch.startedAt ?? cur?.startedAt;
+    const endedAt = patch.endedAt ?? cur?.endedAt ?? null;
+    if (startedAt && endedAt) {
+      applyResolution({
+        startedAt,
+        endedAt,
+        excludeId: id,
+        resolution: resolution ?? "auto",
+      });
+    }
     entries.update(id, patch);
     broadcastChanges({ current: true, tasks: true, entries: true });
   });
@@ -113,10 +202,32 @@ export function registerTimer(): void {
     broadcastChanges({ current: true, tasks: true, entries: true });
   });
   register("entry:insert", (input) => {
-    const e = entries.insert(input);
+    const adjusted = applyResolution({
+      startedAt: input.startedAt,
+      endedAt: input.endedAt,
+      resolution: input.resolution ?? "auto",
+    });
+    const e = entries.insert({
+      taskId: input.taskId,
+      startedAt: adjusted.startedAt,
+      endedAt: adjusted.endedAt,
+      source: input.source,
+      note: input.note,
+    });
     broadcastChanges({ tasks: true, entries: true });
     return e;
   });
+  register("entry:proposeRange", (input) =>
+    enrichConflicts(
+      entries.proposeRange({
+        startedAt: input.startedAt,
+        endedAt: input.endedAt,
+        excludeId: input.excludeId,
+      }),
+    ),
+  );
+
+  register("task:distinctTags", () => tasks.distinctTags());
 
   register("project:list", () => projects.list());
   register("project:stats", (input) => projects.stats(input?.range ?? "week"));

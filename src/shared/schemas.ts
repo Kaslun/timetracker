@@ -23,7 +23,9 @@ import {
   ZProjectStats,
   ZSettings,
   ZTask,
+  ZTaskPriority,
   ZTaskWithProject,
+  ZTopPriorityNudge,
 } from "./models";
 
 export {
@@ -43,7 +45,9 @@ export {
   ZProjectStats,
   ZSettings,
   ZTask,
+  ZTaskPriority,
   ZTaskWithProject,
+  ZTopPriorityNudge,
   ZThemeId,
 } from "./models";
 
@@ -117,6 +121,7 @@ export const CHANNELS = {
       title: z.string(),
       ticket: z.string().nullable().optional(),
       tag: z.string().nullable().optional(),
+      priority: ZTaskPriority.optional(),
     }),
     ZTask,
   ],
@@ -143,10 +148,13 @@ export const CHANNELS = {
         ticket: z.string().nullable().optional(),
         tag: z.string().nullable().optional(),
         projectId: z.string().optional(),
+        priority: ZTaskPriority.optional(),
       }),
     }),
     ZTask,
   ],
+  /** Distinct task tags currently in use (drives the Tasks tab tag filter). */
+  "task:distinctTags": [z.void(), z.array(z.string())],
 
   "entry:list": [
     z.object({
@@ -156,8 +164,17 @@ export const CHANNELS = {
     }),
     z.array(ZEntryRow),
   ],
+  /**
+   * Patch a single entry. `resolution` controls how overlapping neighbours
+   * are handled — see `shared/lib/timeline.ts`. Default `"auto"` trims into
+   * the proposed range when possible; otherwise rejects with `"conflict"`.
+   */
   "entry:update": [
-    z.object({ id: z.string(), patch: ZEntry.partial() }),
+    z.object({
+      id: z.string(),
+      patch: ZEntry.partial(),
+      resolution: z.enum(["auto", "replace", "split", "force"]).optional(),
+    }),
     z.void(),
   ],
   "entry:delete": [z.object({ id: z.string() }), z.void()],
@@ -168,8 +185,36 @@ export const CHANNELS = {
       endedAt: z.number(),
       source: ZEntrySource,
       note: z.string().nullable().optional(),
+      resolution: z.enum(["auto", "replace", "split", "force"]).optional(),
     }),
     ZEntry,
+  ],
+  /**
+   * Pre-flight conflict check. The renderer uses this to decide whether to
+   * just insert (`ok` / `trim`) or to surface the replace/split/cancel
+   * dialog (`conflict`). Mirrors `resolveConflict` from shared/lib/timeline.
+   */
+  "entry:proposeRange": [
+    z.object({
+      taskId: z.string().optional(),
+      startedAt: z.number(),
+      endedAt: z.number(),
+      excludeId: z.string().optional(),
+    }),
+    z.discriminatedUnion("kind", [
+      z.object({ kind: z.literal("ok") }),
+      z.object({
+        kind: z.literal("trim"),
+        adjusted: z.object({
+          startedAt: z.number(),
+          endedAt: z.number(),
+        }),
+      }),
+      z.object({
+        kind: z.literal("conflict"),
+        conflictsWith: z.array(ZEntryRow),
+      }),
+    ]),
   ],
 
   "project:list": [z.void(), z.array(ZProject)],
@@ -249,6 +294,42 @@ export const CHANNELS = {
   "integration:disconnect": [
     z.object({ id: ZIntegrationId }),
     ZIntegrationState,
+  ],
+  /** Force a fresh fetch of one provider (bypasses the 5-min freshness floor). */
+  "integration:refresh": [
+    z.object({ id: ZIntegrationId }),
+    z.object({
+      ok: z.boolean(),
+      tasksAdded: z.number(),
+      throttled: z.boolean(),
+      message: z.string().nullable(),
+    }),
+  ],
+  /** Push timeline entries → Tempo as worklogs. Dry-run reports without API calls. */
+  "integration:tempoSync": [
+    z.object({ dryRun: z.boolean().optional() }),
+    z.object({
+      ok: z.boolean(),
+      pushed: z.number(),
+      conflicts: z.number(),
+      skipped: z.number(),
+      dryRun: z.boolean(),
+      message: z.string().nullable(),
+    }),
+  ],
+  /** Per-provider request budget + cache-hit stats for the debug panel. */
+  "integration:debugStats": [
+    z.void(),
+    z.array(
+      z.object({
+        provider: z.string(),
+        requests: z.number(),
+        cacheHits: z.number(),
+        lastSyncedAt: z.number().nullable(),
+        rateLimitRemaining: z.number().nullable(),
+        retryAfter: z.number().nullable(),
+      }),
+    ),
   ],
 
   "nudge:dismiss": [z.object({ kind: z.string() }), z.void()],
@@ -350,6 +431,14 @@ export const CHANNELS = {
   "tag:create": [z.object({ label: z.string().min(1) }), ZCustomTag],
   "tag:delete": [z.object({ id: z.string() }), z.void()],
 
+  /**
+   * Open an external URL in the user's default browser. Used by the source
+   * tag chips to deep-link to Linear/Jira/etc. Validated to a strict allow
+   * list of `http(s):` URLs main-side so a compromised renderer can't open
+   * `file://` or custom-protocol URLs without explicit support.
+   */
+  "shell:openUrl": [z.object({ url: z.string().url() }), z.void()],
+
   "update:check": [z.void(), ZUpdateInfo],
   "update:open": [z.void(), z.void()],
   /**
@@ -380,6 +469,11 @@ export const EVENTS = {
   "settings:changed": ZSettings,
   "integrations:changed": z.array(ZIntegrationState),
   "nudge:fire": ZNudgeEvent,
+  /**
+   * Daily "top priority for today" nudge — fires once per work-day at the
+   * first work-hours tick. Renderer surfaces it as a low-key inline banner.
+   */
+  "topPriority:fire": ZTopPriorityNudge,
   "pill:state": ZPillResize,
   "pill:mode": z.object({ mode: ZPillMode }),
   "expanded:state": z.object({ visible: z.boolean() }),

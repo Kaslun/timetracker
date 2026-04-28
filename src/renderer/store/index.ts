@@ -49,6 +49,8 @@ const EMPTY_CURRENT: CurrentTaskView = {
   running: false,
   entryId: null,
   startedAt: null,
+  integrationId: null,
+  externalUrl: null,
 };
 
 export const useStore = create<AppState>((set, get) => ({

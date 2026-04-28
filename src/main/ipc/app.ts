@@ -1,3 +1,4 @@
+import { shell } from "electron";
 import {
   cancelQuit,
   getCachedSummary,
@@ -10,10 +11,7 @@ import {
   installUpdate,
   openLatestRelease,
 } from "../services/updater";
-import {
-  disconnectAllIntegrations,
-  wipeLocalData,
-} from "../services/wipe";
+import { disconnectAllIntegrations, wipeLocalData } from "../services/wipe";
 import { register } from "./handlers";
 
 export function registerApp(): void {
@@ -42,5 +40,18 @@ export function registerApp(): void {
 
   register("shortcuts:setSuspended", ({ suspended }) => {
     setShortcutsSuspended(suspended);
+  });
+
+  register("shell:openUrl", ({ url }) => {
+    // Defence in depth on top of the Zod `url()` check: enforce a strict
+    // protocol allow list. Renderer-supplied URLs are still untrusted.
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      return;
+    }
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") return;
+    void shell.openExternal(parsed.toString());
   });
 }

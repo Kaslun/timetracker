@@ -115,6 +115,32 @@ class Registry {
     }
   }
 
+  /**
+   * Re-fetch tasks/projects for one provider, bypassing any freshness floor.
+   * Idempotent: only NEW tasks are inserted; existing rows aren't disturbed.
+   * Round-5 contract: provider implementations honour the per-provider
+   * `assigneeOnly` and `includeUnassignedICreated` flags from settings.
+   */
+  async refresh(id: IntegrationId): Promise<void> {
+    const e = this.require(id);
+    if (e.status !== "connected") {
+      throw new Error(`${id} is not connected`);
+    }
+    const data = await e.provider.fetchTasks();
+    this.persistProviderData(id, data);
+    e.lastSyncedAt = Date.now();
+    this.broadcast();
+    broadcastChanges({ tasks: true });
+  }
+
+  /** Count of tasks currently in the DB for one provider (used by refresh()). */
+  listTaskCount(id: IntegrationId): number {
+    const r = db()
+      .prepare("SELECT COUNT(*) AS n FROM tasks WHERE integration_id = ?")
+      .get(id) as { n: number };
+    return r?.n ?? 0;
+  }
+
   async disconnect(id: IntegrationId): Promise<IntegrationState> {
     const e = this.require(id);
     await deleteSecret(id);
@@ -172,6 +198,8 @@ class Registry {
             tag: t.tag,
             id: t.id,
             integrationId: t.integrationId ?? id,
+            priority: t.priority,
+            externalUrl: t.externalUrl,
           });
         }
       }

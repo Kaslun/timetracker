@@ -13,6 +13,19 @@ import {
 import { setAutoLaunch } from "./services/autolaunch";
 import { startIdleService, stopIdleService } from "./services/idle";
 import {
+  startTopPriorityNudge,
+  stopTopPriorityNudge,
+} from "./services/topPriorityNudge";
+import {
+  startTempoScheduler,
+  stopTempoScheduler,
+  flushTempoOnQuit,
+} from "./services/tempoScheduler";
+import {
+  startIntegrationRefresh,
+  stopIntegrationRefresh,
+} from "./services/integrationRefresh";
+import {
   registerGlobalShortcuts,
   unregisterGlobalShortcuts,
 } from "./services/shortcuts";
@@ -50,6 +63,9 @@ app.whenReady().then(() => {
 
   // 5. Start idle/retro polling + global shortcuts + tray + menu
   startIdleService();
+  startTopPriorityNudge();
+  startTempoScheduler();
+  startIntegrationRefresh();
   registerGlobalShortcuts();
   createTray();
   buildAppMenu();
@@ -77,6 +93,13 @@ app.on("will-quit", () => {
 
 app.on("before-quit", () => {
   stopIdleService();
+  stopTopPriorityNudge();
+  stopTempoScheduler();
+  stopIntegrationRefresh();
+  // Best-effort final flush; we don't `event.preventDefault()` to avoid
+  // surprising users with a "still quitting…" pause. If the flush fails
+  // the next launch will pick up the unfinished entries from `entry_sync`.
+  void flushTempoOnQuit();
   destroyTray();
 });
 

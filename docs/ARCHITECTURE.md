@@ -99,6 +99,40 @@ only owner of remote state on the renderer side.
 | Change theme tokens            | `src/renderer/themes/tokens.css` + `src/renderer/themes/themes.ts`                                                                                    |
 | Reduce or rename the icons     | `src/renderer/components/Icons.tsx`                                                                                                                   |
 
+## Integrations
+
+Every integration provider (Linear, Jira, Asana, GitHub, Notion, GCal,
+Slack, Teams) ships with the same contract:
+
+- **Assignee-scoped fetches only**. Providers MUST use the source's native
+  filter (`assignee: { isMe: true }` / `assignee = currentUser()` /
+  `assignee:@me`) and never pull-then-filter on the client. The shared
+  `IntegrationConfig.assigneeOnly` defaults to `true`. Aggregation or
+  team-wide views are explicitly out of scope — Attensi Time Tracker is a
+  personal tracker.
+- **Opt-in unassigned-but-mine**. Some workflows (solo / personal
+  boards) rely on tasks the user _created_ even when the assignee field
+  is empty. The per-provider `includeUnassignedICreated` toggle in
+  Settings → Integrations enables this; default off.
+- **Centralised metadata** in `src/shared/integrations/registry.ts`
+  (label, brand color, URL template, single-glyph mark). Both renderer
+  chips and main-side audit logs read from this map. Adding a provider =
+  one entry here + one provider class in `src/main/integrations/providers/`.
+- **Polite networking** is owned by `src/main/integrations/httpClient.ts`
+  and `src/main/integrations/cache.ts`:
+  - SQLite-backed response cache (table `integration_cache`) with
+    `etag` + `updated_at` columns.
+  - Conditional requests (`If-None-Match`) when an ETag exists.
+  - Background refresh every 15 min; on focus refresh if older than 5
+    min; manual refresh bypasses the floor.
+  - Request coalescing (2s window) and rate-limit awareness
+    (`X-RateLimit-Remaining`, `Retry-After`).
+- **Tempo bridge**. When Jira is connected and the Tempo REST API
+  responds on probe, the per-provider config exposes a Tempo block.
+  Local entries push to Tempo as worklogs (idempotent via
+  `entry_sync.remote_id`). See `docs/INTEGRATIONS.md` for the full sync
+  state machine.
+
 ## Build pipeline
 
 ```
