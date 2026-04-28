@@ -1,10 +1,10 @@
 {
   "name": "attensi-time-tracker",
-  "version": "0.1.4",
-  "description": "Attensi Time Tracker — a calm Windows desktop time tracker",
+  "version": "0.1.5",
+  "description": "Time Tracker — a calm Windows desktop time tracker",
   "main": "out/main/index.js",
   "author": {
-    "name": "Attensi"
+    "name": "LunDev"
   },
   "license": "MIT",
   "repository": {
