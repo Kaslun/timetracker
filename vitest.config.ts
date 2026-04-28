@@ -30,6 +30,7 @@ export default defineConfig({
         "src/renderer/lib/useMotionEnabled.ts",
         "src/renderer/lib/useSuppressShortcutsOnInput.ts",
         "src/renderer/lib/useTags.ts",
+        "src/renderer/lib/useContainerWidth.ts",
         "src/shared/types.ts",
       ],
       thresholds: {

@@ -351,9 +351,54 @@ body.transparent {
   width: 28px;
   height: 28px;
 }
+.attensi .btn.danger {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: transparent;
+}
+.attensi .btn.danger:hover {
+  background: color-mix(in oklab, var(--danger) 10%, transparent);
+}
 .attensi .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Reveal-on-hover row actions (used by TaskRow + ProjectsTab rows). */
+.attensi .task-row:hover .task-row-actions,
+.attensi .project-row:hover .project-row-actions {
+  opacity: 1;
+}
+
+/* Round 4 — per-window breakpoints. The `.bp-*` class is set on the window
+ * root by `useContainerWidth()` based on a ResizeObserver of the same
+ * element, so each window can have its own compact / default / wide layout
+ * regardless of viewport size.
+ *
+ * Compact (< 520px): tab labels collapse to icon-only chips, padding is
+ * tighter so the strip still fits five tabs in the new minimum 360px width.
+ *   Default (520-820px): existing designs.
+ *   Wide (> 820px): more horizontal breathing room; opt-in side panes.
+ */
+.attensi .tab-icon {
+  display: none;
+  align-items: center;
+}
+.attensi.bp-compact .tab-icon {
+  display: inline-flex;
+}
+.attensi.bp-compact .tab-label {
+  display: none;
+}
+.attensi.bp-compact [role="tab"] {
+  padding: 10px 8px !important;
+}
+
+.attensi.bp-wide .scroll {
+  /* Allow opt-in two-column layouts at wide widths. Pages can override the
+   * grid template directly; this default applies a comfortable max-width to
+   * keep line-lengths readable. */
+  max-width: none;
 }
 
 /* Chips */

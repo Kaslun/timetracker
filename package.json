@@ -29,6 +29,7 @@
     "test:e2e": "playwright test",
     "check": "npm run typecheck && npm run lint && npm run test",
     "rebuild": "electron-builder install-app-deps",
+    "seed:linear": "node scripts/seed-from-linear-mcp.mjs",
     "postinstall": "electron-builder install-app-deps && (husky || true)",
     "dist:win": "electron-vite build && electron-builder --win nsis portable",
     "dist:win:portable": "electron-vite build && electron-builder --win portable",

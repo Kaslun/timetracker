@@ -1,11 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  comboFromEvent,
   detectPlatform,
+  effectiveBinding,
   globalAccelerator,
   isEditableTarget,
   matchInAppShortcut,
+  SHORTCUT_KEYS,
   SHORTCUTS,
   shortcutLabel,
+  validateBinding,
   type ShortcutKey,
 } from "../../src/shared/hotkeys";
 
@@ -202,5 +206,174 @@ describe("detectPlatform", () => {
   it("returns 'win' for a Win32 platform string", () => {
     vi.stubGlobal("navigator", { platform: "Win32" });
     expect(detectPlatform()).toBe("win");
+  });
+});
+
+// ---- Round-4 editable shortcuts -----------------------------------------
+
+const ev = (init: {
+  key: string;
+  ctrlKey?: boolean;
+  shiftKey?: boolean;
+  metaKey?: boolean;
+  altKey?: boolean;
+}): KeyboardEvent =>
+  ({
+    ctrlKey: false,
+    shiftKey: false,
+    metaKey: false,
+    altKey: false,
+    ...init,
+  }) as KeyboardEvent;
+
+describe("SHORTCUT_KEYS", () => {
+  it("enumerates every entry in SHORTCUTS", () => {
+    expect(SHORTCUT_KEYS.sort()).toEqual(Object.keys(SHORTCUTS).sort());
+  });
+});
+
+describe("effectiveBinding", () => {
+  it("returns the default win accelerator when no override exists", () => {
+    expect(effectiveBinding("toggleTimer")).toBe("Ctrl+Space");
+    expect(effectiveBinding("switchTask", {})).toBe("S");
+  });
+
+  it("returns the override combo when one is set for that key", () => {
+    expect(
+      effectiveBinding("toggleTimer", { toggleTimer: { combo: "Ctrl+T" } }),
+    ).toBe("Ctrl+T");
+  });
+
+  it("ignores overrides for unrelated keys", () => {
+    expect(
+      effectiveBinding("toggleTimer", { switchTask: { combo: "T" } }),
+    ).toBe("Ctrl+Space");
+  });
+});
+
+describe("comboFromEvent", () => {
+  it("returns null for modifier-only events (capture mode keeps waiting)", () => {
+    expect(comboFromEvent(ev({ key: "Control" }))).toBeNull();
+    expect(comboFromEvent(ev({ key: "Shift" }))).toBeNull();
+    expect(comboFromEvent(ev({ key: "Alt" }))).toBeNull();
+    expect(comboFromEvent(ev({ key: "Meta" }))).toBeNull();
+  });
+
+  it("upper-cases single-letter keys", () => {
+    expect(comboFromEvent(ev({ key: "s" }))).toBe("S");
+    expect(comboFromEvent(ev({ key: "B", ctrlKey: true }))).toBe("Ctrl+B");
+  });
+
+  it("renders space as 'Space'", () => {
+    expect(comboFromEvent(ev({ key: " ", ctrlKey: true }))).toBe("Ctrl+Space");
+    expect(comboFromEvent(ev({ key: " " }))).toBe("Space");
+  });
+
+  it("preserves named keys verbatim (ArrowLeft, F1, /, Tab)", () => {
+    expect(comboFromEvent(ev({ key: "ArrowLeft" }))).toBe("ArrowLeft");
+    expect(comboFromEvent(ev({ key: "F1" }))).toBe("F1");
+    expect(comboFromEvent(ev({ key: "/" }))).toBe("/");
+    expect(comboFromEvent(ev({ key: "Tab", altKey: true }))).toBe("Alt+Tab");
+  });
+
+  it("orders modifiers Ctrl, Shift, Alt, Meta", () => {
+    expect(
+      comboFromEvent(
+        ev({
+          key: "S",
+          ctrlKey: true,
+          shiftKey: true,
+          altKey: true,
+          metaKey: true,
+        }),
+      ),
+    ).toBe("Ctrl+Shift+Alt+Meta+S");
+  });
+});
+
+describe("matchInAppShortcut with overrides", () => {
+  it("respects an override that rebinds an in-app shortcut to a new key", () => {
+    expect(
+      matchInAppShortcut(ev({ key: "T" }), { switchTask: { combo: "T" } }),
+    ).toBe("switchTask");
+  });
+
+  it("returns null for the now-unbound default key after an override", () => {
+    expect(
+      matchInAppShortcut(ev({ key: "S" }), { switchTask: { combo: "T" } }),
+    ).toBeNull();
+  });
+});
+
+describe("validateBinding", () => {
+  it("rejects an empty combo with a 'press a key' prompt", () => {
+    const r = validateBinding("toggleTimer", "", {});
+    expect(r.ok).toBe(false);
+    expect(r.reason).toMatch(/press a key/i);
+  });
+
+  it("rejects OS-reserved combinations like Alt+F4 and Win+L", () => {
+    expect(validateBinding("brainDumpGlobal", "Alt+F4", {}).ok).toBe(false);
+    expect(validateBinding("brainDumpGlobal", "Meta+L", {}).ok).toBe(false);
+    expect(validateBinding("brainDumpGlobal", "Ctrl+Alt+Delete", {}).ok).toBe(
+      false,
+    );
+  });
+
+  it("rejects single-key globals (would steal text input system-wide)", () => {
+    const r = validateBinding("toggleTimer", "T", {});
+    expect(r.ok).toBe(false);
+    expect(r.reason).toMatch(/global shortcuts must include ctrl/i);
+  });
+
+  it("rejects globals with only Shift (no Ctrl/Cmd)", () => {
+    const r = validateBinding("toggleTimer", "Shift+T", {});
+    expect(r.ok).toBe(false);
+    expect(r.reason).toMatch(/global shortcuts must include ctrl/i);
+  });
+
+  it("accepts a valid Ctrl+key global binding", () => {
+    const r = validateBinding("toggleTimer", "Ctrl+T", {});
+    expect(r.ok).toBe(true);
+    expect(r.reason).toBeUndefined();
+  });
+
+  it("accepts a valid Ctrl+Shift+key global binding", () => {
+    expect(validateBinding("brainDumpGlobal", "Ctrl+Shift+J", {}).ok).toBe(
+      true,
+    );
+  });
+
+  it("accepts bare-key in-app shortcuts", () => {
+    expect(validateBinding("switchTask", "T", {}).ok).toBe(true);
+    expect(validateBinding("brainDump", "Z", {}).ok).toBe(true);
+  });
+
+  it("flags conflicts with another bound shortcut and surfaces the conflict key", () => {
+    const r = validateBinding("brainDumpGlobal", "Ctrl+Space", {});
+    expect(r.ok).toBe(false);
+    expect(r.reason).toMatch(/already bound/i);
+    expect(r.conflict?.key).toBe("toggleTimer");
+    expect(r.conflict?.combo).toBe("Ctrl+Space");
+  });
+
+  it("recognises overridden bindings when checking conflicts", () => {
+    const overrides = { switchTask: { combo: "T" } };
+    const r = validateBinding("brainDump", "T", overrides);
+    expect(r.ok).toBe(false);
+    expect(r.conflict?.key).toBe("switchTask");
+  });
+
+  it("doesn't flag a key as conflicting with itself", () => {
+    // Re-saving toggleTimer with its current binding is a no-op, not a
+    // conflict — useful when the user opens edit mode then cancels.
+    const r = validateBinding("toggleTimer", "Ctrl+Space", {});
+    expect(r.ok).toBe(true);
+  });
+});
+
+describe("matchInAppShortcut: defensive branches", () => {
+  it("returns null when comboFromEvent yields null (modifier-only)", () => {
+    expect(matchInAppShortcut(ev({ key: "Shift" }))).toBeNull();
   });
 });

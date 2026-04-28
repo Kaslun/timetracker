@@ -3,6 +3,7 @@ import type { EntryRow } from "@shared/types";
 import { useStore } from "@/store";
 import { startOfDay } from "@/lib/time";
 import { rpc } from "@/lib/api";
+import { TimeDisplay } from "@/components";
 
 const HOUR_PX = 42;
 const DAY_START_HOUR = 8;
@@ -457,9 +458,15 @@ export function TimelineTab() {
                     {isDragging ? (
                       <>
                         {" · "}
-                        {clockTimeShort(e.startedAt)}
+                        <TimeDisplay
+                          as="span"
+                          value={clockTimeShort(e.startedAt)}
+                        />
                         {" – "}
-                        {clockTimeShort(e.endedAt ?? tick)}
+                        <TimeDisplay
+                          as="span"
+                          value={clockTimeShort(e.endedAt ?? tick)}
+                        />
                       </>
                     ) : null}
                   </span>
@@ -510,8 +517,15 @@ export function TimelineTab() {
                 pointerEvents: "none",
               }}
             >
-              {clockTimeShort(createDrag.startedAt)} –{" "}
-              {clockTimeShort(createDrag.endedAt)}
+              <TimeDisplay
+                as="span"
+                value={clockTimeShort(createDrag.startedAt)}
+              />{" "}
+              –{" "}
+              <TimeDisplay
+                as="span"
+                value={clockTimeShort(createDrag.endedAt)}
+              />
             </div>
           ) : null}
 
@@ -645,7 +659,8 @@ function BlockCreatePopover({
       >
         <span style={{ fontSize: 12, fontWeight: 600 }}>New block</span>
         <span className="mono ink-3" style={{ fontSize: 10 }}>
-          {clockTimeShort(block.startedAt)} – {clockTimeShort(block.endedAt)} ·{" "}
+          <TimeDisplay as="span" value={clockTimeShort(block.startedAt)} /> –{" "}
+          <TimeDisplay as="span" value={clockTimeShort(block.endedAt)} /> ·{" "}
           {minutes}m
         </span>
       </div>

@@ -252,6 +252,71 @@ export const Ic = {
       <path d="M8 2v8M4.5 7L8 10.5 11.5 7M3 13h10" />
     </svg>
   ),
+  Pencil: ({ s = 14, ...rest }: IconProps) => (
+    <svg
+      width={s}
+      height={s}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...rest}
+    >
+      <path d="M11.5 2.5l2 2L5 13H3v-2l8.5-8.5z" />
+    </svg>
+  ),
+  Trash: ({ s = 14, ...rest }: IconProps) => (
+    <svg
+      width={s}
+      height={s}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.4"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...rest}
+    >
+      <path d="M3 4.5h10M6.5 4V3h3v1M5 4.5L5.5 13h5L11 4.5" />
+    </svg>
+  ),
+  Archive: ({ s = 14, ...rest }: IconProps) => (
+    <svg
+      width={s}
+      height={s}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...rest}
+    >
+      <rect x="2" y="3" width="12" height="3" rx="0.5" />
+      <path d="M3 6.5v6h10v-6M6.5 9h3" />
+    </svg>
+  ),
+  Folder: ({ s = 14, ...rest }: IconProps) => (
+    <svg
+      width={s}
+      height={s}
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      {...rest}
+    >
+      <path d="M2 4.5a1 1 0 0 1 1-1h3l1.5 1.5h5.5a1 1 0 0 1 1 1V12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4.5z" />
+    </svg>
+  ),
 };
 
 // keep the helper for any future icons that need consistent base props

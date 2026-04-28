@@ -10,6 +10,10 @@ import {
   installUpdate,
   openLatestRelease,
 } from "../services/updater";
+import {
+  disconnectAllIntegrations,
+  wipeLocalData,
+} from "../services/wipe";
 import { register } from "./handlers";
 
 export function registerApp(): void {
@@ -22,6 +26,10 @@ export function registerApp(): void {
   register("app:cancelQuit", () => {
     cancelQuit();
   });
+  register("app:wipeLocalData", () => wipeLocalData());
+  register("app:disconnectAllIntegrations", async () =>
+    disconnectAllIntegrations(),
+  );
   register("eod:summary", () => getCachedSummary());
 
   register("update:check", async () => checkForUpdate());

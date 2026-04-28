@@ -90,6 +90,21 @@ export const SHORTCUTS = {
 
 export type ShortcutKey = keyof typeof SHORTCUTS;
 
+export const SHORTCUT_KEYS = Object.keys(SHORTCUTS) as ShortcutKey[];
+
+/**
+ * Resolve the current binding for `key`, honouring user overrides from
+ * settings (the renderer passes `settings.shortcutOverrides` in). Returns the
+ * default `win` accelerator when no override is set.
+ */
+export function effectiveBinding(
+  key: ShortcutKey,
+  overrides: Record<string, { combo: string }> = {},
+): string {
+  const ov = overrides[key];
+  return ov?.combo ?? SHORTCUTS[key].win;
+}
+
 /** Display label, platform-aware. */
 export function shortcutLabel(
   key: ShortcutKey,
@@ -104,28 +119,137 @@ export function shortcutLabel(
 export function globalAccelerator(
   key: ShortcutKey,
   platform: Platform = "win",
+  overrides: Record<string, { combo: string }> = {},
 ): string {
   const s = SHORTCUTS[key];
   if (s.scope !== "global") {
     throw new Error(`globalAccelerator() called on in-app shortcut: ${key}`);
   }
-  return platform === "mac" ? s.win.replace("Ctrl", "Cmd") : s.win;
+  const combo = effectiveBinding(key, overrides);
+  return platform === "mac" ? combo.replace("Ctrl", "Cmd") : combo;
 }
 
 /** Map a `KeyboardEvent` to the in-app shortcut it should trigger, or null
- *  if no match. Modifiers are explicitly disallowed (single-key only).
- *  Caller is responsible for ignoring inputs/textareas. */
-export function matchInAppShortcut(e: KeyboardEvent): ShortcutKey | null {
-  if (e.ctrlKey || e.metaKey || e.altKey) return null;
-  const map: Record<string, ShortcutKey> = {
-    " ": "toggleTimerLocal",
-    s: "switchTask",
-    e: "expandWindow",
-    b: "brainDump",
-    "/": "cheatsheet",
-  };
-  const hit = map[e.key.toLowerCase()];
-  return hit ?? null;
+ *  if no match. Honours user overrides (so a single-key in-app shortcut can
+ *  be rebound to e.g. "Shift+S" or just "T"). Caller is responsible for
+ *  ignoring inputs/textareas. */
+export function matchInAppShortcut(
+  e: KeyboardEvent,
+  overrides: Record<string, { combo: string }> = {},
+): ShortcutKey | null {
+  const combo = comboFromEvent(e);
+  if (!combo) return null;
+  for (const k of SHORTCUT_KEYS) {
+    const sc = SHORTCUTS[k];
+    if (sc.scope !== "inapp") continue;
+    if (effectiveBinding(k, overrides) === combo) return k;
+  }
+  return null;
+}
+
+/**
+ * Convert a `KeyboardEvent` into our canonical combo string (e.g.
+ * `"Ctrl+Shift+S"`, `"Space"`, `"/"`). Returns `null` when the event only
+ * carries modifier keys with no main key — capture mode uses this to wait
+ * for the main key.
+ */
+export function comboFromEvent(e: KeyboardEvent): string | null {
+  const main = mainKeyName(e);
+  if (!main) return null;
+  const mods: string[] = [];
+  if (e.ctrlKey) mods.push("Ctrl");
+  if (e.shiftKey) mods.push("Shift");
+  if (e.altKey) mods.push("Alt");
+  if (e.metaKey) mods.push("Meta");
+  return [...mods, main].join("+");
+}
+
+function mainKeyName(e: KeyboardEvent): string | null {
+  if (e.key === "Control" || e.key === "Shift" || e.key === "Alt" || e.key === "Meta") {
+    return null;
+  }
+  if (e.key === " ") return "Space";
+  if (e.key.length === 1) return e.key.toUpperCase();
+  return e.key; // ArrowLeft, F1, Tab, /
+}
+
+/**
+ * Combos the OS / Electron reserves and we should never let the user bind.
+ * Stored in canonical (`Ctrl+Shift+Foo`) form so they can be compared
+ * directly against `comboFromEvent` output.
+ */
+const OS_RESERVED = new Set<string>([
+  "Ctrl+Alt+Delete",
+  "Meta+L", // Win+L (lock)
+  "Alt+F4",
+  "Alt+Tab",
+  "Ctrl+Alt+Tab",
+  "Meta+Tab",
+  "Meta+D", // Win+D (show desktop)
+  "Meta+E",
+  "Meta+R",
+  "Meta+Space",
+  "F11",
+  "Meta+Shift+S",
+]);
+
+export interface ValidationResult {
+  ok: boolean;
+  reason?: string;
+  conflict?: { key: ShortcutKey; combo: string };
+}
+
+/**
+ * Validate a candidate combo for the given shortcut key.
+ *
+ * Rules:
+ *   - Globals must include `Ctrl` (or `Meta` on mac) and at least one main
+ *     key. Single-key globals would steal text input system-wide.
+ *   - In-app shortcuts can be bare keys.
+ *   - OS-reserved combos are rejected with a clear message.
+ *   - Conflicts with another bound shortcut return the conflicting key so
+ *     the UI can offer a swap.
+ */
+export function validateBinding(
+  key: ShortcutKey,
+  combo: string,
+  overrides: Record<string, { combo: string }>,
+): ValidationResult {
+  const sc = SHORTCUTS[key];
+  if (!combo) return { ok: false, reason: "Press a key to assign." };
+
+  if (OS_RESERVED.has(combo)) {
+    return { ok: false, reason: `${combo} is reserved by the operating system.` };
+  }
+
+  if (sc.scope === "global") {
+    const parts = combo.split("+");
+    const hasModifier = parts.some(
+      (p) => p === "Ctrl" || p === "Meta" || p === "Shift" || p === "Alt",
+    );
+    const hasNonShiftAccelerator = parts.some(
+      (p) => p === "Ctrl" || p === "Meta",
+    );
+    if (!hasModifier || !hasNonShiftAccelerator || parts.length < 2) {
+      return {
+        ok: false,
+        reason: "Global shortcuts must include Ctrl (or Cmd) and a main key.",
+      };
+    }
+  }
+
+  for (const k of SHORTCUT_KEYS) {
+    if (k === key) continue;
+    if (effectiveBinding(k, overrides) === combo) {
+      return {
+        ok: false,
+        reason: `Already bound to ${SHORTCUTS[k].label}.`,
+        conflict: { key: k, combo },
+      };
+    }
+  }
+
+  return { ok: true };
 }
 
 export function isEditableTarget(t: EventTarget | null): boolean {

@@ -11,6 +11,7 @@ interface Row {
   archived_at: number | null;
   completed_at: number | null;
   created_at: number;
+  integration_id: string | null;
 }
 
 interface JoinedRow extends Row {
@@ -29,6 +30,7 @@ const map = (r: Row): Task => ({
   archivedAt: r.archived_at,
   completedAt: r.completed_at,
   createdAt: r.created_at,
+  integrationId: r.integration_id ?? null,
 });
 
 const mapJoined = (r: JoinedRow): TaskWithProject => ({
@@ -58,7 +60,28 @@ export const tasks = {
    * still included so the UI can render them with strikethrough.
    */
   listWithStats(now = Date.now()): TaskWithProject[] {
+    return tasks.queryWithStats({ now });
+  },
+
+  /**
+   * Variant of `listWithStats` with optional filters used by the Projects
+   * drill-in. `includeArchived` controls whether archived tasks come back;
+   * `projectId` narrows the result to a single project. Both default to the
+   * normal behaviour (active, all projects).
+   *
+   * Kept as one query so the renderer never has to do two round-trips for
+   * the same data.
+   */
+  queryWithStats(opts: {
+    now?: number;
+    projectId?: string;
+    includeArchived?: boolean;
+  } = {}): TaskWithProject[] {
+    const now = opts.now ?? Date.now();
     const dayStart = startOfDay(now);
+    const where: string[] = [];
+    if (!opts.includeArchived) where.push("t.archived_at IS NULL");
+    if (opts.projectId) where.push("t.project_id = @projectId");
     const sql = `
       SELECT
         t.*,
@@ -79,16 +102,20 @@ export const tasks = {
         ) AS active_entry_id
       FROM tasks t
       JOIN projects p ON p.id = t.project_id
-      WHERE t.archived_at IS NULL
+      ${where.length ? "WHERE " + where.join(" AND ") : ""}
       ORDER BY
         t.completed_at IS NOT NULL,
         active_entry_id IS NOT NULL DESC,
         today_sec DESC,
         t.created_at DESC
     `;
-    return (db().prepare(sql).all({ now, dayStart }) as JoinedRow[]).map(
-      mapJoined,
-    );
+    return (
+      db().prepare(sql).all({
+        now,
+        dayStart,
+        projectId: opts.projectId ?? null,
+      }) as JoinedRow[]
+    ).map(mapJoined);
   },
 
   get(id: string): Task | null {
@@ -104,6 +131,7 @@ export const tasks = {
     ticket?: string | null;
     tag?: string | null;
     id?: string;
+    integrationId?: string | null;
   }): Task {
     const id = input.id ?? newId("tsk");
     const now = Date.now();
@@ -116,20 +144,56 @@ export const tasks = {
       archivedAt: null,
       completedAt: null,
       createdAt: now,
+      integrationId: input.integrationId ?? null,
     };
     db()
       .prepare(
-        `INSERT INTO tasks (id, project_id, ticket, title, tag, archived_at, completed_at, created_at)
-         VALUES (@id, @projectId, @ticket, @title, @tag, @archivedAt, @completedAt, @createdAt)`,
+        `INSERT INTO tasks (id, project_id, ticket, title, tag, archived_at, completed_at, created_at, integration_id)
+         VALUES (@id, @projectId, @ticket, @title, @tag, @archivedAt, @completedAt, @createdAt, @integrationId)`,
       )
       .run(row);
     return row;
+  },
+
+  /**
+   * Patch user-editable fields. Title is required to be a non-empty string;
+   * pass undefined for any field you don't want to touch. Returns the updated
+   * row, or null if it didn't exist.
+   */
+  update(
+    id: string,
+    patch: Partial<
+      Pick<Task, "title" | "ticket" | "tag" | "projectId">
+    >,
+  ): Task | null {
+    const cur = tasks.get(id);
+    if (!cur) return null;
+    const next: Task = {
+      ...cur,
+      title: patch.title !== undefined ? patch.title : cur.title,
+      ticket: patch.ticket !== undefined ? patch.ticket : cur.ticket,
+      tag: patch.tag !== undefined ? patch.tag : cur.tag,
+      projectId: patch.projectId !== undefined ? patch.projectId : cur.projectId,
+    };
+    db()
+      .prepare(
+        `UPDATE tasks
+         SET project_id = @projectId, ticket = @ticket, title = @title, tag = @tag
+         WHERE id = @id`,
+      )
+      .run(next);
+    return next;
   },
 
   archive(id: string): void {
     db()
       .prepare("UPDATE tasks SET archived_at = ? WHERE id = ?")
       .run(Date.now(), id);
+  },
+
+  /** Restore an archived task. */
+  unarchive(id: string): void {
+    db().prepare("UPDATE tasks SET archived_at = NULL WHERE id = ?").run(id);
   },
 
   /** Mark a task as complete (or reopen it). Completion is reversible. */

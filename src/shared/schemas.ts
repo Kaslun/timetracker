@@ -20,6 +20,7 @@ import {
   ZIntegrationState,
   ZNudgeEvent,
   ZProject,
+  ZProjectStats,
   ZSettings,
   ZTask,
   ZTaskWithProject,
@@ -39,6 +40,7 @@ export {
   ZIntegrationStatus,
   ZNudgeEvent,
   ZProject,
+  ZProjectStats,
   ZSettings,
   ZTask,
   ZTaskWithProject,
@@ -46,9 +48,20 @@ export {
 } from "./models";
 
 const ZToastKind = z.enum(["slack", "teams", "idle_recover", "retro_fill"]);
-const ZTabId = z.enum(["timeline", "list", "inbox", "fill"]);
+const ZTabId = z.enum(["timeline", "list", "inbox", "fill", "projects"]);
 const ZPillResize = z.enum(["collapsed", "dump"]);
 const ZPillMode = z.enum(["pill", "expanded"]);
+
+const ZSettingsSection = z.enum([
+  "general",
+  "appearance",
+  "nudges",
+  "focus-sprints",
+  "integrations",
+  "shortcuts",
+  "data-export",
+]);
+export type SettingsSectionId = z.infer<typeof ZSettingsSection>;
 
 const ZEodGap = z.object({
   startedAt: z.number(),
@@ -108,9 +121,31 @@ export const CHANNELS = {
     ZTask,
   ],
   "task:archive": [z.object({ id: z.string() }), z.void()],
+  "task:unarchive": [z.object({ id: z.string() }), z.void()],
   "task:setCompleted": [
     z.object({ id: z.string(), completed: z.boolean() }),
     z.void(),
+  ],
+  /**
+   * Patch user-editable fields on a task.
+   *
+   * For integration-imported tasks (`integrationId !== null`), the
+   * source-owned fields (title, ticket) are silently ignored — those edits
+   * happen in Linear/Jira/etc. Local-only fields (tag, projectId) always
+   * apply. Returns the resulting task or rejects with a validation error
+   * for empty titles or ticket-key collisions within the same project.
+   */
+  "task:update": [
+    z.object({
+      id: z.string(),
+      patch: z.object({
+        title: z.string().optional(),
+        ticket: z.string().nullable().optional(),
+        tag: z.string().nullable().optional(),
+        projectId: z.string().optional(),
+      }),
+    }),
+    ZTask,
   ],
 
   "entry:list": [
@@ -138,6 +173,51 @@ export const CHANNELS = {
   ],
 
   "project:list": [z.void(), z.array(ZProject)],
+  /** Per-project totals for the Projects tab. Range is week / month / all. */
+  "project:stats": [
+    z.object({ range: z.enum(["week", "month", "all"]) }).optional(),
+    z.array(ZProjectStats),
+  ],
+  "project:create": [
+    z.object({
+      name: z.string().min(1),
+      color: z.string(),
+      ticketPrefix: z.string().nullable().optional(),
+    }),
+    ZProject,
+  ],
+  "project:update": [
+    z.object({
+      id: z.string(),
+      patch: z.object({
+        name: z.string().min(1).optional(),
+        color: z.string().optional(),
+        ticketPrefix: z.string().nullable().optional(),
+      }),
+    }),
+    ZProject,
+  ],
+  "project:archive": [z.object({ id: z.string() }), z.void()],
+  "project:unarchive": [z.object({ id: z.string() }), z.void()],
+  /** Tasks belonging to a project, optionally including archived. */
+  "project:tasks": [
+    z.object({
+      projectId: z.string(),
+      includeArchived: z.boolean().optional(),
+    }),
+    z.array(ZTaskWithProject),
+  ],
+  /**
+   * Daily time-spent breakdown for a project over the selected range. Returns
+   * one entry per day (ISO `YYYY-MM-DD`), zero-filled.
+   */
+  "project:dailyBreakdown": [
+    z.object({
+      projectId: z.string(),
+      range: z.enum(["week", "month", "all"]),
+    }),
+    z.array(z.object({ date: z.string(), seconds: z.number() })),
+  ],
 
   "capture:create": [
     z.object({ text: z.string(), tag: z.string().nullable().optional() }),
@@ -213,7 +293,10 @@ export const CHANNELS = {
   "window:openExpanded": [z.void(), z.void()],
   "window:toggleExpanded": [z.void(), z.void()],
   "window:openDashboard": [z.void(), z.void()],
-  "window:openSettings": [z.void(), z.void()],
+  "window:openSettings": [
+    z.object({ section: ZSettingsSection.optional() }).optional(),
+    z.void(),
+  ],
   "window:openCheatsheet": [z.void(), z.void()],
   "window:openIntegration": [z.object({ id: z.enum(["linear"]) }), z.void()],
   "window:hidePill": [z.void(), z.void()],
@@ -244,6 +327,17 @@ export const CHANNELS = {
   "app:requestQuit": [z.void(), z.void()],
   "app:quitNow": [z.void(), z.void()],
   "app:cancelQuit": [z.void(), z.void()],
+  /**
+   * Truncate every local table except the rows that mark integrations as
+   * connected, then relaunch the app. Returns the number of data-row deletes
+   * the caller can show in a toast or undo-warning.
+   */
+  "app:wipeLocalData": [z.void(), z.object({ rowsRemoved: z.number() })],
+  /** Burn every keychain token and clear `integrationsConnected`. */
+  "app:disconnectAllIntegrations": [
+    z.void(),
+    z.object({ disconnected: z.array(z.string()) }),
+  ],
   /**
    * Renderer asks main to suspend or resume globally-registered shortcuts.
    * Used while a text input/textarea has focus so accelerators like
@@ -290,6 +384,7 @@ export const EVENTS = {
   "pill:mode": z.object({ mode: ZPillMode }),
   "expanded:state": z.object({ visible: z.boolean() }),
   "expanded:tab": ZTabId,
+  "settings:section": ZSettingsSection,
   "expanded:focus-search": z.void(),
   "pill:focus-dump": z.void(),
   "demo:toast": z.object({ kind: ZToastKind }),

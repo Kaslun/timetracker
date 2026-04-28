@@ -1,4 +1,4 @@
-import { type BrowserWindow, screen } from "electron";
+import { app, type BrowserWindow, screen } from "electron";
 import { APP_NAME, PILL } from "@shared/constants";
 import type { Settings } from "@shared/types";
 import { settings as settingsRepo } from "../db/repos/settings";
@@ -61,6 +61,19 @@ export function ensurePill(): BrowserWindow {
     });
   });
 
+  // Round 4: pressing the title-bar close button while morphed to expanded
+  // (or hitting Alt+F4 in either mode) quits the entire app. The pill is the
+  // only top-level window that morphs between modes, so any `close` here is
+  // effectively the user asking to exit. The renderer-side close handler
+  // already flushed any in-progress brain dump as a draft capture before
+  // invoking `app:quitNow`; for the OS-level Alt+F4 path we accept that the
+  // draft survives in localStorage and is recovered on next launch.
+  win.on("close", (event) => {
+    if (state.quittingFromExpanded) return;
+    state.quittingFromExpanded = true;
+    event.preventDefault();
+    app.quit();
+  });
   win.on("closed", () => {
     state.pill = null;
   });

@@ -1,0 +1,140 @@
+{
+  "_comment": "Frozen snapshot of Kasper's open Linear issues. Captured manually via the Cursor Linear MCP on 2026-04-28. Used by scripts/seed-from-linear-mcp.mjs to populate a fresh local DB. NOT used by the running app — the real Linear integration uses an OAuth/API token.",
+  "capturedAt": "2026-04-28T07:36:00.000Z",
+  "assignee": "Kasper Mork Lunde",
+  "teams": [
+    {
+      "id": "1ea2f018-0004-4408-94e4-03d5ab3edce7",
+      "name": "Skills RealTalk",
+      "color": "#5e6ad2",
+      "ticketPrefix": "SRT"
+    },
+    {
+      "id": "3ab52746-7433-4722-a994-36ba4c855d00",
+      "name": "Operations",
+      "color": "#f59e42",
+      "ticketPrefix": "OPE"
+    }
+  ],
+  "issues": [
+    {
+      "id": "SRT-139",
+      "title": "Create customer feedback flow",
+      "teamId": "1ea2f018-0004-4408-94e4-03d5ab3edce7",
+      "labels": ["Improvement"],
+      "status": "In Progress"
+    },
+    {
+      "id": "SRT-327",
+      "title": "Game over feedback gives conflicting feedback",
+      "teamId": "1ea2f018-0004-4408-94e4-03d5ab3edce7",
+      "labels": ["bug"],
+      "status": "In Review / In QA"
+    },
+    {
+      "id": "SRT-329",
+      "title": "Update staging flows",
+      "teamId": "1ea2f018-0004-4408-94e4-03d5ab3edce7",
+      "labels": [],
+      "status": "Waiting for Release"
+    },
+    {
+      "id": "SRT-328",
+      "title": "Create Coach briefing script",
+      "teamId": "1ea2f018-0004-4408-94e4-03d5ab3edce7",
+      "labels": [],
+      "status": "Waiting for Release"
+    },
+    {
+      "id": "SRT-278",
+      "title": "[Focus test] Re-calibrate 5-star difficulty threshold",
+      "teamId": "1ea2f018-0004-4408-94e4-03d5ab3edce7",
+      "labels": [],
+      "status": "Waiting for Release"
+    },
+    {
+      "id": "SRT-318",
+      "title": "Create dynamic briefing scripts",
+      "teamId": "1ea2f018-0004-4408-94e4-03d5ab3edce7",
+      "labels": [],
+      "status": "Backlog"
+    },
+    {
+      "id": "SRT-100",
+      "title": "Timeline feedback of each interaction",
+      "teamId": "1ea2f018-0004-4408-94e4-03d5ab3edce7",
+      "labels": ["Improvement", "Migrated"],
+      "status": "Backlog"
+    },
+    {
+      "id": "OPE-13",
+      "title": "Teleport Character node doesn't teleport",
+      "teamId": "3ab52746-7433-4722-a994-36ba4c855d00",
+      "labels": ["regression"],
+      "status": "In Review / In QA"
+    },
+    {
+      "id": "OPE-14",
+      "title": "Support animation library for Operations",
+      "teamId": "3ab52746-7433-4722-a994-36ba4c855d00",
+      "labels": ["arr_driver"],
+      "status": "Selected for Development"
+    },
+    {
+      "id": "OPE-11",
+      "title": "Slideshows don't prompt player to click to continue",
+      "teamId": "3ab52746-7433-4722-a994-36ba4c855d00",
+      "labels": ["regression"],
+      "status": "Selected for Development"
+    },
+    {
+      "id": "OPE-8",
+      "title": "No anti-aliasing on character shadows in battery saving mode",
+      "teamId": "3ab52746-7433-4722-a994-36ba4c855d00",
+      "labels": ["regression"],
+      "status": "Selected for Development"
+    },
+    {
+      "id": "OPE-5",
+      "title": "Adding player tag through flow while in dialogue breaks game",
+      "teamId": "3ab52746-7433-4722-a994-36ba4c855d00",
+      "labels": ["regression"],
+      "status": "Selected for Development"
+    },
+    {
+      "id": "OPE-9",
+      "title": "Create timed mode for standard modules",
+      "teamId": "3ab52746-7433-4722-a994-36ba4c855d00",
+      "labels": ["arr_driver"],
+      "status": "Backlog"
+    },
+    {
+      "id": "OPE-6",
+      "title": "Add \"Show\" and \"Hide\" Task Button node to Flow",
+      "teamId": "3ab52746-7433-4722-a994-36ba4c855d00",
+      "labels": ["arr_driver"],
+      "status": "Backlog"
+    },
+    {
+      "id": "OPE-4",
+      "title": "Unity 6 Android scene updates",
+      "teamId": "3ab52746-7433-4722-a994-36ba4c855d00",
+      "labels": ["availability"],
+      "status": "Backlog"
+    },
+    {
+      "id": "OPE-12",
+      "title": "Redesign interactable highlights",
+      "teamId": "3ab52746-7433-4722-a994-36ba4c855d00",
+      "labels": ["arr_driver"],
+      "status": "Backlog"
+    },
+    {
+      "id": "OPE-7",
+      "title": "Update idle standing and seated animations to match 2D scenes",
+      "teamId": "3ab52746-7433-4722-a994-36ba4c855d00",
+      "labels": ["arr_driver"],
+      "status": "Backlog"
+    }
+  ]
+}

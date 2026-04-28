@@ -28,7 +28,7 @@ storage and Zod-validated IPC.
 The app stores everything in:
 
 ```
-%APPDATA%\Attensi Time Tracker\timetracker.sqlite
+%APPDATA%\attensi-time-tracker\timetracker.sqlite
 ```
 
 To wipe all data: quit the app, delete that file, relaunch. Toggle "open at
@@ -91,6 +91,42 @@ npm run check             # typecheck + lint + test
 npm run dist:win          # build + nsis + portable into release/
 npm run dist:win:portable # portable only (faster)
 ```
+
+### Seeding dev data (Linear MCP one-shot)
+
+`scripts/seed-from-linear-mcp.mjs` is a **dev-only** convenience until the real
+Linear OAuth flow lands. It wipes the local SQLite database and re-seeds it
+from a frozen snapshot of your open Linear issues. The snapshot
+(`scripts/data/linear-snapshot.json`) was captured manually via the Cursor /
+Claude Linear MCP — re-capture it whenever you want fresher data, the running
+app does not consult either file.
+
+```powershell
+# Quit the app first so the DB isn't locked, then:
+npm run seed:linear
+
+# Optional flags (forwarded to the script)
+npm run seed:linear -- --dry-run
+npm run seed:linear -- --user-data "C:\path\to\overrides"
+```
+
+Under the hood `npm run seed:linear` invokes Electron in `ELECTRON_RUN_AS_NODE=1`
+mode so the Node ABI matches the rebuilt `better-sqlite3` native module.
+
+The script:
+
+- Deletes `%APPDATA%\attensi-time-tracker\timetracker.sqlite` (and its WAL/SHM
+  siblings).
+- Re-runs the schema migrations against a fresh database.
+- Inserts one project per Linear team (color, ticket prefix, integration owner
+  set to `linear`) and one task per open issue (id, title, ticket key, primary
+  label as tag).
+- Leaves the `entries` table empty — you haven't tracked time yet.
+
+It is **not** part of the build, **not** auto-run on app start, and **not**
+shipped in any distributable. The real Linear integration in
+**Settings → Integrations** continues to use the OAuth/API-token path it has
+always used.
 
 The first install runs `electron-builder install-app-deps`, which rebuilds
 `better-sqlite3` against the bundled Electron ABI. If you bump Electron, run

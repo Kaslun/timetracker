@@ -68,6 +68,7 @@ export class LinearProvider extends BaseProvider {
         archivedAt: null,
         completedAt: null,
         createdAt: now,
+        integrationId: this.id,
       },
       {
         id: newId("tsk"),
@@ -78,6 +79,7 @@ export class LinearProvider extends BaseProvider {
         archivedAt: null,
         completedAt: null,
         createdAt: now,
+        integrationId: this.id,
       },
     ];
     return { projects, tasks };

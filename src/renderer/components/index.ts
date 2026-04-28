@@ -8,3 +8,4 @@ export { PlayPauseIcon } from "./PlayPauseIcon";
 export { DigitRoll } from "./DigitRoll";
 export { ChevronRotate } from "./ChevronRotate";
 export { TagPicker } from "./TagPicker";
+export { TimeDisplay } from "./TimeDisplay";

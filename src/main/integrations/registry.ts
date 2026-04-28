@@ -155,7 +155,7 @@ class Registry {
   }
 
   private persistProviderData(
-    _id: IntegrationId,
+    id: IntegrationId,
     data: { projects: Project[]; tasks: Task[] },
   ): void {
     const trx = db().transaction(() => {
@@ -171,6 +171,7 @@ class Registry {
             ticket: t.ticket,
             tag: t.tag,
             id: t.id,
+            integrationId: t.integrationId ?? id,
           });
         }
       }

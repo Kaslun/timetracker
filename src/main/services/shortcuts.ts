@@ -1,10 +1,15 @@
 import { globalShortcut } from "electron";
-import { SHORTCUTS, type ShortcutKey } from "@shared/hotkeys";
+import {
+  SHORTCUTS,
+  effectiveBinding,
+  type ShortcutKey,
+} from "@shared/hotkeys";
 import { ensurePill } from "../windows/manager";
 import { broadcast } from "../ipc/events";
 import { entries } from "../db/repos/entries";
 import { tasks } from "../db/repos/tasks";
 import { captures } from "../db/repos/captures";
+import { settings as settingsRepo } from "../db/repos/settings";
 import { requestQuit } from "./quit";
 import { logger } from "./logger";
 
@@ -63,11 +68,13 @@ let suspended = false;
 export function registerGlobalShortcuts(): void {
   unregisterGlobalShortcuts();
   if (suspended) return;
+  const overrides = settingsRepo.getAll().shortcutOverrides;
   for (const b of BINDINGS) {
     const sc = SHORTCUTS[b.key];
     if (sc.scope !== "global") continue;
-    const ok = globalShortcut.register(sc.win, b.handler);
-    if (!ok) log.warn(`failed to register ${sc.win} (${b.key})`);
+    const accel = effectiveBinding(b.key, overrides);
+    const ok = globalShortcut.register(accel, b.handler);
+    if (!ok) log.warn(`failed to register ${accel} (${b.key})`);
   }
 }
 
@@ -88,7 +95,18 @@ export function setShortcutsSuspended(next: boolean): void {
   else registerGlobalShortcuts();
 }
 
+/**
+ * Re-register the global shortcuts table — call this whenever the user edits
+ * the shortcut overrides via Settings so the new bindings take effect
+ * immediately without a relaunch.
+ */
+export function reapplyGlobalShortcuts(): void {
+  if (suspended) return;
+  registerGlobalShortcuts();
+}
+
 /** Used by the tray + menu so they show the same accelerator strings. */
 export function shortcutAccelerator(key: ShortcutKey): string {
-  return SHORTCUTS[key].win;
+  const overrides = settingsRepo.getAll().shortcutOverrides;
+  return effectiveBinding(key, overrides);
 }

@@ -19,15 +19,19 @@ import {
   isEditableTarget,
   type ShortcutKey,
 } from "@shared/hotkeys";
+import { useStore } from "@/store";
 
 type Action = () => void;
 export type ShortcutMap = Partial<Record<ShortcutKey, Action>>;
 
 export function useInAppShortcuts(map: ShortcutMap): void {
+  // Pulled into the closure so renames in Settings → Shortcuts take effect
+  // without remounting the windows that bind them.
+  const overrides = useStore((s) => s.settings.shortcutOverrides);
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
       if (isEditableTarget(e.target)) return;
-      const key = matchInAppShortcut(e);
+      const key = matchInAppShortcut(e, overrides);
       if (!key) return;
       const action = map[key];
       if (!action) return;
@@ -36,5 +40,5 @@ export function useInAppShortcuts(map: ShortcutMap): void {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [map]);
+  }, [map, overrides]);
 }

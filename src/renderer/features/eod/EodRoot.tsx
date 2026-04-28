@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { rpc } from "@/lib/api";
 import { useStore } from "@/store";
 import { clockTime, formatHM } from "@/lib/time";
-import { Ic } from "@/components";
+import { Ic, TimeDisplay } from "@/components";
 
 interface Gap {
   startedAt: number;
@@ -158,7 +158,8 @@ export function EodRoot() {
                     borderBottom: "1px solid var(--line)",
                   }}
                 >
-                  <span
+                  <TimeDisplay
+                    value={range}
                     className="mono"
                     style={{
                       fontSize: 11,
@@ -166,9 +167,7 @@ export function EodRoot() {
                       width: 90,
                       flexShrink: 0,
                     }}
-                  >
-                    {range}
-                  </span>
+                  />
                   <span
                     className="chip"
                     style={{

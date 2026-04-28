@@ -28,8 +28,8 @@ export function registerWindows(): void {
   register("window:openDashboard", () => {
     ensureDashboard();
   });
-  register("window:openSettings", () => {
-    ensureSettings();
+  register("window:openSettings", (input) => {
+    ensureSettings({ section: input?.section });
   });
   register("window:openCheatsheet", () => {
     ensureCheatsheet();

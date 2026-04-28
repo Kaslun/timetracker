@@ -91,6 +91,20 @@ const MIGRATIONS: Migration[] = [
       }
     },
   },
+  {
+    version: 4,
+    up: (db) => {
+      // Track per-task integration ownership so the task can be moved to a
+      // local project but still be flagged "imported from Linear" (locking
+      // title + ticket key edits).
+      const cols = db.prepare("PRAGMA table_info(tasks)").all() as {
+        name: string;
+      }[];
+      if (!cols.some((c) => c.name === "integration_id")) {
+        db.exec(`ALTER TABLE tasks ADD COLUMN integration_id TEXT`);
+      }
+    },
+  },
 ];
 
 export function runMigrations(db: Db): void {

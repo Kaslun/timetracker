@@ -22,6 +22,7 @@ import { startOfWeek, endOfWeek } from "@/lib/time";
 import { EmptyState, Ic, TitleBar } from "@/components";
 import { rpc } from "@/lib/api";
 import { useStore } from "@/store";
+import { useContainerWidth } from "@/lib/useContainerWidth";
 
 const DAY_INDEX: Record<string, number> = {
   Mon: 0,
@@ -168,9 +169,25 @@ export function DashboardRoot() {
     });
   };
 
+  const { ref, breakpoint } = useContainerWidth<HTMLDivElement>();
+  // Round 4: dashboard layout responds to its own width via ResizeObserver.
+  // - Compact (<520px): stat cards + breakdown panes stack to one column.
+  // - Default (520-820px): existing 4-up stat row, 1.4fr/1fr split.
+  // - Wide (>820px): keep the wide split (and let cards breathe via the
+  //   shared `.bp-wide` rule in tokens.css).
+  const statsCols =
+    breakpoint === "compact"
+      ? "repeat(2, 1fr)"
+      : breakpoint === "wide"
+        ? "repeat(4, 1fr)"
+        : "repeat(4, 1fr)";
+  const splitCols =
+    breakpoint === "compact" ? "1fr" : "1.4fr 1fr";
+
   return (
     <div
-      className="attensi window"
+      ref={ref}
+      className={`attensi window bp-${breakpoint}`}
       style={{ display: "flex", flexDirection: "column", height: "100%" }}
     >
       <TitleBar
@@ -267,7 +284,7 @@ export function DashboardRoot() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(4, 1fr)",
+                gridTemplateColumns: statsCols,
                 gap: 16,
               }}
             >
@@ -278,7 +295,7 @@ export function DashboardRoot() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "1.4fr 1fr",
+                gridTemplateColumns: splitCols,
                 gap: 16,
               }}
             >

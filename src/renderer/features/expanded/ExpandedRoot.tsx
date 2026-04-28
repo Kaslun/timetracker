@@ -4,11 +4,28 @@ import { Tabs, type TabId } from "./Tabs";
 import { TimelineTab } from "./TimelineTab";
 import { TasksTab } from "./TasksTab";
 import { InboxTab } from "./InboxTab";
+import { FillTab } from "./FillTab";
+import { ProjectsTab } from "./ProjectsTab";
+import { normaliseTabOrder } from "./tabOrder";
+import { useContainerWidth } from "@/lib/useContainerWidth";
 import { Ic, TitleBar } from "@/components";
 import { rpc, on } from "@/lib/api";
 import { useStore } from "@/store";
 import { useInAppShortcuts } from "@/lib/useInAppShortcuts";
 import { UpdateBanner } from "@/features/update/UpdateBanner";
+import { flushDraftAsCapture } from "@/lib/brainDumpDraft";
+
+/**
+ * Quit handler invoked by the title bar's close button. Per round 4:
+ *   1. Save any in-progress brain dump as a draft capture (no prompt).
+ *   2. Tell main to quit immediately (no confirmation dialog).
+ * Failures along the way are intentionally swallowed — the user clicked X,
+ * they expect the app to disappear.
+ */
+async function quitFromExpanded(): Promise<void> {
+  await flushDraftAsCapture();
+  await rpc("app:quitNow");
+}
 
 function fmtHeader(d: Date): string {
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -31,7 +48,15 @@ function fmtHeader(d: Date): string {
 
 export function ExpandedRoot() {
   const captures = useStore((s) => s.captures);
+  const expandedTabOrder = useStore((s) => s.settings.expandedTabOrder);
   const [tab, setTab] = useState<TabId>("timeline");
+
+  // Recompute tab list whenever the persisted order changes — this powers
+  // both the visible tab strip and the Ctrl+1..N shortcut routing below.
+  const tabOrder = useMemo(
+    () => normaliseTabOrder(expandedTabOrder as TabId[] | null),
+    [expandedTabOrder],
+  );
 
   useEffect(() => {
     const off = on("expanded:tab", (next) => {
@@ -62,11 +87,15 @@ export function ExpandedRoot() {
         if (e.key === "Escape") (e.target as HTMLElement).blur();
         return;
       }
-      if ((e.ctrlKey || e.metaKey) && /^[1-3]$/.test(e.key)) {
-        const map: TabId[] = ["timeline", "list", "inbox"];
+      // Ctrl/Cmd + 1..N → jump to the Nth tab in the user's persisted order.
+      // Earlier rounds hardcoded 1..3 → timeline/list/inbox; with 5 tabs and
+      // user-defined ordering we route through the live `tabOrder` array.
+      if ((e.ctrlKey || e.metaKey) && /^[1-9]$/.test(e.key)) {
         const idx = parseInt(e.key, 10) - 1;
-        e.preventDefault();
-        setTab(map[idx]);
+        if (idx < tabOrder.length) {
+          e.preventDefault();
+          setTab(tabOrder[idx]);
+        }
       } else if (e.key === "Escape") {
         // In single-window morph, Esc collapses back to pill rather than
         // closing the window — the pill is the always-on surface.
@@ -75,7 +104,7 @@ export function ExpandedRoot() {
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [tabOrder]);
 
   const onSearch = (): void => {
     setTab("list");
@@ -99,15 +128,17 @@ export function ExpandedRoot() {
   };
 
   const inboxCount = captures.filter((c) => !c.tag).length;
+  const { ref, breakpoint } = useContainerWidth<HTMLDivElement>();
 
   return (
     <div
-      className="attensi window"
+      ref={ref}
+      className={`attensi window bp-${breakpoint}`}
       style={{ display: "flex", flexDirection: "column", height: "100%" }}
     >
       <TitleBar
         title={fmtHeader(new Date())}
-        onClose={() => void rpc("window:toggleExpanded")}
+        onClose={() => void quitFromExpanded()}
       />
       <SubHeader
         onSearch={onSearch}
@@ -125,7 +156,8 @@ export function ExpandedRoot() {
       {tab === "timeline" && <TimelineTab />}
       {tab === "list" && <TasksTab />}
       {tab === "inbox" && <InboxTab />}
-      {/* `fill` tab is intentionally not rendered — see Tabs.tsx note. */}
+      {tab === "fill" && <FillTab />}
+      {tab === "projects" && <ProjectsTab />}
     </div>
   );
 }

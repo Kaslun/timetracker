@@ -119,4 +119,7 @@ export const DEFAULT_SETTINGS: Settings = {
   pillLastDisplayId: null,
   pillVisible: true,
   autoLaunch: true,
+  expandedTabOrder: ["timeline", "list", "inbox", "fill", "projects"],
+  shortcutOverrides: {},
+  windowBounds: {},
 };

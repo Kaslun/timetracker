@@ -42,6 +42,7 @@ export const ZTask = z.object({
   archivedAt: z.number().nullable(),
   completedAt: z.number().nullable(),
   createdAt: z.number(),
+  integrationId: z.string().nullable(),
 });
 
 export const ZTaskWithProject = ZTask.extend({
@@ -49,6 +50,13 @@ export const ZTaskWithProject = ZTask.extend({
   projectColor: z.string(),
   todaySec: z.number(),
   active: z.boolean(),
+});
+
+export const ZProjectStats = z.object({
+  projectId: z.string(),
+  totalTasks: z.number(),
+  openTasks: z.number(),
+  trackedSec: z.number(),
 });
 
 export const ZEntry = z.object({
@@ -108,6 +116,17 @@ const ZWorkHours = z
 
 const ZPillPosition = z.object({ x: z.number(), y: z.number() });
 
+const ZWindowBounds = z.object({
+  x: z.number(),
+  y: z.number(),
+  width: z.number(),
+  height: z.number(),
+  displayId: z.string().nullable(),
+  maximized: z.boolean(),
+});
+
+const ZShortcutOverride = z.object({ combo: z.string() });
+
 export const ZSettings = z.object({
   firstRunComplete: z.boolean(),
   userName: z.string().nullable(),
@@ -123,6 +142,9 @@ export const ZSettings = z.object({
   pillLastDisplayId: z.string().nullable(),
   pillVisible: z.boolean(),
   autoLaunch: z.boolean(),
+  expandedTabOrder: z.array(z.string()),
+  shortcutOverrides: z.record(z.string(), ZShortcutOverride),
+  windowBounds: z.record(z.string(), ZWindowBounds),
 });
 
 export const ZIntegrationId = z.enum([

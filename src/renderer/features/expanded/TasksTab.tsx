@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { TaskWithProject } from "@shared/types";
 import { useStore } from "@/store";
-import { EmptyState, Ic, Swatch } from "@/components";
+import { EmptyState, Ic } from "@/components";
 import { rpc, on } from "@/lib/api";
-import { formatElapsed, formatHM } from "@/lib/time";
+import { formatHM } from "@/lib/time";
+import { TaskRow } from "./TaskRow";
 
 export function TasksTab() {
   const tasks = useStore((s) => s.tasks);
@@ -11,6 +12,7 @@ export function TasksTab() {
   const [query, setQuery] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [newProjectId, setNewProjectId] = useState<string>("");
+  const [editingId, setEditingId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -37,7 +39,7 @@ export function TasksTab() {
   }, [query, tasks]);
 
   const start = (t: TaskWithProject) => async (): Promise<void> => {
-    if (t.completedAt) return; // Don't restart a completed task.
+    if (t.completedAt) return;
     if (t.active) {
       await useStore.getState().pause();
     } else {
@@ -50,6 +52,10 @@ export function TasksTab() {
       id: t.id,
       completed: !t.completedAt,
     });
+  };
+
+  const onArchive = async (t: TaskWithProject): Promise<void> => {
+    await rpc("task:archive", { id: t.id });
   };
 
   const onCreate = async (): Promise<void> => {
@@ -146,77 +152,18 @@ export function TasksTab() {
           />
         ) : null}
 
-        {filtered.map((t) => {
-          const isDone = !!t.completedAt;
-          return (
-            <div
-              key={t.id}
-              onClick={() => void start(t)()}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "12px 16px",
-                borderLeft: t.active
-                  ? "2px solid var(--accent)"
-                  : "2px solid transparent",
-                background: t.active
-                  ? "color-mix(in oklab, var(--accent) 5%, var(--surface))"
-                  : "transparent",
-                cursor: isDone ? "default" : "pointer",
-                opacity: isDone ? 0.55 : 1,
-              }}
-            >
-              <CompletionCheck
-                done={isDone}
-                onToggle={() => void toggleComplete(t)}
-              />
-              <Swatch color={t.projectColor} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  style={{
-                    fontSize: 13,
-                    fontWeight: t.active ? 500 : 400,
-                    lineHeight: 1.3,
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    textDecoration: isDone ? "line-through" : "none",
-                    color: isDone ? "var(--ink-3)" : undefined,
-                  }}
-                >
-                  {t.title}
-                </div>
-                <div
-                  className="mono ink-3"
-                  style={{ fontSize: 10, marginTop: 2 }}
-                >
-                  {t.ticket ?? "—"} · {t.projectName}
-                </div>
-              </div>
-              {t.tag ? <span className="chip">{t.tag}</span> : null}
-              <span
-                className="mono num"
-                style={{
-                  fontSize: 12,
-                  color: t.active ? "var(--accent)" : "var(--ink-2)",
-                  fontWeight: t.active ? 600 : 500,
-                  minWidth: 56,
-                  textAlign: "right",
-                }}
-              >
-                {formatElapsed(t.todaySec)}
-              </span>
-              {!isDone ? (
-                t.active ? (
-                  <Ic.Pause s={11} />
-                ) : (
-                  <Ic.Play s={11} />
-                )
-              ) : null}
-            </div>
-          );
-        })}
+        {filtered.map((t) => (
+          <TaskRow
+            key={t.id}
+            task={t}
+            projects={projects}
+            editing={editingId === t.id}
+            onStartEdit={() => setEditingId(t.id)}
+            onCancelEdit={() => setEditingId(null)}
+            onArchive={() => void onArchive(t)}
+            onToggleComplete={() => void toggleComplete(t)}
+          />
+        ))}
 
         {showCreateRow && (
           <div
@@ -284,44 +231,3 @@ export function TasksTab() {
   );
 }
 
-/**
- * Round checkbox sized for the tasks list. Theme-aware (uses `--accent`
- * tokens). Stops propagation so toggling completion doesn't also start the
- * task via the row's onClick.
- */
-function CompletionCheck({
-  done,
-  onToggle,
-}: {
-  done: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="checkbox"
-      aria-checked={done}
-      title={done ? "Reopen task" : "Mark complete"}
-      onClick={(e) => {
-        e.stopPropagation();
-        onToggle();
-      }}
-      style={{
-        width: 16,
-        height: 16,
-        borderRadius: "50%",
-        flexShrink: 0,
-        border: `1.5px solid ${done ? "var(--accent)" : "var(--ink-4)"}`,
-        background: done ? "var(--accent)" : "transparent",
-        color: done ? "var(--on-accent, #fff)" : "transparent",
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 0,
-        cursor: "pointer",
-      }}
-    >
-      <Ic.Check s={9} />
-    </button>
-  );
-}

@@ -62,12 +62,21 @@ export function DigitRoll({
 }
 
 function DigitCell({ char }: { char: string }) {
-  // For non-digit separators (`:`, `.`, ` `) just render statically.
+  // For non-digit separators (`:`, `.`, ` `) just render statically. Colons
+  // get the same `-0.08em` lift as <TimeDisplay/> so the glyph optically
+  // centres between the digits — keep the value in sync if you change one.
   const isDigit = /[0-9]/.test(char);
 
   if (!isDigit) {
+    const isColon = char === ":";
     return (
-      <span style={{ display: "inline-block", textAlign: "center" }}>
+      <span
+        style={{
+          display: "inline-block",
+          textAlign: "center",
+          transform: isColon ? "translateY(-0.08em)" : undefined,
+        }}
+      >
         {char}
       </span>
     );

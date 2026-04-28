@@ -1,8 +1,9 @@
 import { useEffect } from "react";
-import { SHORTCUTS, type ShortcutKey } from "@shared/hotkeys";
+import { SHORTCUTS, effectiveBinding, type ShortcutKey } from "@shared/hotkeys";
 import { rpc } from "@/lib/api";
+import { useStore } from "@/store";
 
-const GLOBAL: ShortcutKey[] = ["toggleTimer", "brainDumpGlobal"];
+const GLOBAL: ShortcutKey[] = ["toggleTimer", "brainDumpGlobal", "quitApp"];
 const INAPP: ShortcutKey[] = [
   "toggleTimerLocal",
   "switchTask",
@@ -12,6 +13,12 @@ const INAPP: ShortcutKey[] = [
 ];
 
 export function CheatsheetRoot() {
+  // Pulled live so rebindings made in Settings show up the next time the user
+  // opens the sheet without a relaunch.
+  const overrides = useStore((s) => s.settings.shortcutOverrides) as Record<
+    string,
+    { combo: string }
+  >;
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
       const isClose = e.key === "Escape" || e.key === "/";
@@ -44,11 +51,17 @@ export function CheatsheetRoot() {
           <span className="kbd">/</span>
         </div>
 
-        <ShortcutGroup title="Global" subtitle="Work anywhere" keys={GLOBAL} />
+        <ShortcutGroup
+          title="Global"
+          subtitle="Work anywhere"
+          keys={GLOBAL}
+          overrides={overrides}
+        />
         <ShortcutGroup
           title="In-app"
           subtitle="Single-key — disabled while typing"
           keys={INAPP}
+          overrides={overrides}
         />
 
         <div
@@ -71,10 +84,12 @@ function ShortcutGroup({
   title,
   subtitle,
   keys,
+  overrides,
 }: {
   title: string;
   subtitle: string;
   keys: ShortcutKey[];
+  overrides: Record<string, { combo: string }>;
 }) {
   return (
     <div style={{ marginBottom: 14 }}>
@@ -104,6 +119,7 @@ function ShortcutGroup({
       <div style={{ display: "flex", flexDirection: "column" }}>
         {keys.map((key) => {
           const s = SHORTCUTS[key];
+          const combo = effectiveBinding(key, overrides);
           return (
             <div
               key={key}
@@ -120,7 +136,7 @@ function ShortcutGroup({
                 className="mono kbd"
                 style={{ fontSize: 11, color: "var(--ink-2)" }}
               >
-                {s.win}
+                {combo}
               </span>
             </div>
           );

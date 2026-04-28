@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import type { EntryRow } from "@shared/types";
 import { DASH_COLUMNS, type ColId } from "./presets";
 import { isoDate } from "@/lib/time";
+import { TimeDisplay } from "@/components";
 
 const cellStyle: CSSProperties = {
   padding: "6px 12px",
@@ -123,7 +124,9 @@ export function EntriesTable({
                     <td style={cellStyle}>{isoDate(new Date(r.startedAt))}</td>
                   )}
                   {cols.start && (
-                    <td style={cellStyle}>{clockOf(r.startedAt)}</td>
+                    <td style={cellStyle}>
+                      <TimeDisplay value={clockOf(r.startedAt)} />
+                    </td>
                   )}
                   {cols.end && (
                     <td style={cellStyle}>
@@ -134,7 +137,7 @@ export function EntriesTable({
                           ● running
                         </span>
                       ) : r.endedAt != null ? (
-                        clockOf(r.endedAt)
+                        <TimeDisplay value={clockOf(r.endedAt)} />
                       ) : (
                         "—"
                       )}

@@ -163,7 +163,9 @@ export function toggleMorph(opts?: { force?: Mode }): void {
     const target = expandedBoundsFromPill(pillBounds);
 
     win.setResizable(true);
-    win.setMinimumSize(420, 520);
+    // Round 4 minimums: expanded >= 360x480, no max — let the user fullscreen
+    // or stretch the window however wide they like.
+    win.setMinimumSize(360, 480);
     win.setAlwaysOnTop(false);
     win.setHasShadow(true);
 

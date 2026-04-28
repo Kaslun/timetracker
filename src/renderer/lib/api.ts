@@ -19,6 +19,7 @@ interface AttensiBridge {
     | "eod";
   toastKind: "slack" | "teams" | "idle_recover" | "retro_fill" | null;
   integrationId: "linear" | null;
+  settingsSection: string | null;
   invoke<C extends ChannelName>(channel: C, input?: unknown): Promise<unknown>;
   on(event: EventName, cb: (payload: unknown) => void): () => void;
 }
@@ -33,7 +34,9 @@ type RpcInput<C extends ChannelName> =
   // eslint-disable-next-line @typescript-eslint/no-invalid-void-type
   [ChannelInput<C>] extends [void]
     ? [channel: C]
-    : [channel: C, input: ChannelInput<C>];
+    : undefined extends ChannelInput<C>
+      ? [channel: C, input?: ChannelInput<C>]
+      : [channel: C, input: ChannelInput<C>];
 
 export async function rpc<C extends ChannelName>(
   ...args: RpcInput<C>
@@ -55,3 +58,5 @@ export const toastKind = (): AttensiBridge["toastKind"] =>
   window.attensi.toastKind;
 export const integrationId = (): AttensiBridge["integrationId"] =>
   window.attensi.integrationId;
+export const settingsSection = (): AttensiBridge["settingsSection"] =>
+  window.attensi.settingsSection;

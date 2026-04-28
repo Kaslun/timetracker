@@ -29,6 +29,12 @@ export interface Task {
   /** Wall-clock ms when the user marked the task done; null while open. */
   completedAt: number | null;
   createdAt: number;
+  /**
+   * Source integration that imported this task (e.g. `"linear"`), or null for
+   * locally-created tasks. Used by the editor to lock fields owned by the
+   * source provider — the user can still re-tag or move the task locally.
+   */
+  integrationId: string | null;
 }
 
 export interface Entry {
@@ -80,6 +86,40 @@ export interface PillPosition {
   y: number;
 }
 
+/**
+ * Aggregate per-project totals shown in the Projects tab list.
+ *
+ * `trackedSec` is bound to a particular date range (the renderer toggles
+ * between week and month and re-fetches). `totalTasks` and `openTasks` cover
+ * every non-archived task on the project regardless of range.
+ */
+export interface ProjectStats {
+  projectId: string;
+  totalTasks: number;
+  openTasks: number;
+  trackedSec: number;
+}
+
+/**
+ * Persisted bounds for a non-pill window (expanded morph, dashboard, settings).
+ * `displayId` is captured so we can re-position on the same monitor when the
+ * user has multiple displays attached.
+ */
+export interface WindowBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  displayId: string | null;
+  maximized: boolean;
+}
+
+/** A keyboard binding rebound by the user (overrides the built-in default). */
+export interface ShortcutOverride {
+  /** Modifier-prefixed combo, e.g. "Ctrl+Shift+T" or "Alt+J". */
+  combo: string;
+}
+
 export interface Settings {
   firstRunComplete: boolean;
   userName: string | null;
@@ -96,6 +136,12 @@ export interface Settings {
   pillLastDisplayId: string | null;
   pillVisible: boolean;
   autoLaunch: boolean;
+  /** Order of tabs in the expanded window. See `tabOrder.normaliseTabOrder`. */
+  expandedTabOrder: string[];
+  /** User-rebound shortcut combos, keyed by shortcut id. */
+  shortcutOverrides: Record<string, ShortcutOverride>;
+  /** Last bounds (and display) for each resizable window. */
+  windowBounds: Record<string, WindowBounds>;
 }
 
 /**

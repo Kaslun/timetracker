@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Toggle } from "../Toggle";
 import { Field, NumberInput, SectionHeading, SectionTitle } from "../Field";
 import { useStore } from "@/store";
+import { DEFAULT_TAB_ORDER } from "@/features/expanded/tabOrder";
 import { on, rpc } from "@/lib/api";
 
 interface UpdateInfo {
@@ -23,6 +24,42 @@ export function GeneralSection() {
   const patchSettings = useStore((s) => s.patchSettings);
   const [update, setUpdate] = useState<UpdateInfo | null>(null);
   const [checking, setChecking] = useState(false);
+  const [wiping, setWiping] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
+
+  const onWipe = async (): Promise<void> => {
+    const ok = window.confirm(
+      "This deletes all tasks, projects, time entries, captures, and settings. Integrations stay connected. Continue?",
+    );
+    if (!ok) return;
+    setWiping(true);
+    try {
+      await rpc("app:wipeLocalData");
+      // The main process will relaunch us in ~250ms — leave the spinner up.
+    } catch (err) {
+      setWiping(false);
+      window.alert(
+        `Wipe failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  };
+
+  const onDisconnect = async (): Promise<void> => {
+    const ok = window.confirm(
+      "Disconnect every integration and clear their saved tokens? You'll need to re-authenticate to import data again.",
+    );
+    if (!ok) return;
+    setDisconnecting(true);
+    try {
+      await rpc("app:disconnectAllIntegrations");
+    } finally {
+      setDisconnecting(false);
+    }
+  };
+
+  const onResetTabOrder = (): void => {
+    void patchSettings({ expandedTabOrder: [...DEFAULT_TAB_ORDER] });
+  };
 
   // Subscribe to download progress so the button reflects current state.
   useEffect(() => on("update:state", (u) => setUpdate(u)), []);
@@ -153,6 +190,45 @@ export function GeneralSection() {
             </button>
           ) : null}
         </div>
+      </Field>
+
+      <SectionHeading>Tabs</SectionHeading>
+      <Field
+        label="Reset tab order"
+        sub="Restore the expanded window's tabs to Timeline · Tasks · Inbox · Fill gaps · Projects."
+        inline
+      >
+        <button className="btn" onClick={onResetTabOrder}>
+          Reset
+        </button>
+      </Field>
+
+      <SectionHeading>Danger zone</SectionHeading>
+      <Field
+        label="Wipe local data"
+        sub="Removes every task, project, time entry, capture, custom tag, and most settings. Connected integrations and their keychain tokens are kept so you don't have to re-authenticate."
+        inline
+      >
+        <button
+          className="btn danger"
+          onClick={() => void onWipe()}
+          disabled={wiping}
+        >
+          {wiping ? "Wiping…" : "Wipe local data"}
+        </button>
+      </Field>
+      <Field
+        label="Disconnect all integrations"
+        sub="Burns every keychain token and forgets every linked workspace. Local data is untouched. Use this if a token leaked or you're handing the laptop on."
+        inline
+      >
+        <button
+          className="btn danger"
+          onClick={() => void onDisconnect()}
+          disabled={disconnecting}
+        >
+          {disconnecting ? "Disconnecting…" : "Disconnect everything"}
+        </button>
       </Field>
     </>
   );

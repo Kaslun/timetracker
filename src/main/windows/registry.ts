@@ -22,6 +22,13 @@ interface Singletons {
 export const state: Singletons & {
   toasts: Map<ToastKind, BrowserWindow>;
   integrations: Map<IntegrationPanelId, BrowserWindow>;
+  /**
+   * Latch flipped when the pill window's `close` event fires once we've
+   * decided this is a real "quit the whole app" close. Without it, calling
+   * `app.quit()` from inside the close handler re-fires the same event,
+   * stalling the shutdown.
+   */
+  quittingFromExpanded: boolean;
 } = {
   pill: null,
   expanded: null,
@@ -32,6 +39,7 @@ export const state: Singletons & {
   eod: null,
   toasts: new Map(),
   integrations: new Map(),
+  quittingFromExpanded: false,
 };
 
 export type SingletonKind = keyof Singletons;

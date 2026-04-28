@@ -12,14 +12,16 @@ import {
   getMode,
 } from "../windows/manager";
 import { requestQuit } from "./quit";
+import { shortcutAccelerator } from "./shortcuts";
 
 /** Menus only honor proper accelerators (with modifiers). For in-app
  *  shortcuts we render the bare key as a hint — Electron treats single-key
  *  accelerators as no-ops anyway, but the visible label is still useful. */
 const ACCEL = (k: keyof typeof SHORTCUTS): string => {
   const sc = SHORTCUTS[k];
-  if (sc.scope === "global") return sc.win.replace(/\bCtrl\b/g, "Control");
-  return sc.win;
+  const combo = shortcutAccelerator(k);
+  if (sc.scope === "global") return combo.replace(/\bCtrl\b/g, "Control");
+  return combo;
 };
 
 export function buildAppMenu(): void {

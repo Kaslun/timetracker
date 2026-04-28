@@ -14,6 +14,8 @@ interface AttensiApi {
     | "eod";
   toastKind: "slack" | "teams" | "idle_recover" | "retro_fill" | null;
   integrationId: "linear" | null;
+  /** Optional initial section the settings window should land on. */
+  settingsSection: string | null;
   invoke<C extends ChannelName>(channel: C, input?: unknown): Promise<unknown>;
   on(event: EventName, cb: (payload: unknown) => void): () => void;
 }
@@ -25,11 +27,13 @@ const toastKind =
   (url.searchParams.get("toast") as AttensiApi["toastKind"]) ?? null;
 const integrationId =
   (url.searchParams.get("integration") as AttensiApi["integrationId"]) ?? null;
+const settingsSection = url.searchParams.get("section");
 
 const api: AttensiApi = {
   windowKind,
   toastKind,
   integrationId,
+  settingsSection,
   invoke(channel, input) {
     return ipcRenderer.invoke(channel, input);
   },

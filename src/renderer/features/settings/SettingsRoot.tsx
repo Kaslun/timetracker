@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { JSX } from "react";
 import { GeneralSection } from "./sections/GeneralSection";
 import { AppearanceSection } from "./sections/AppearanceSection";
@@ -8,7 +8,8 @@ import { ShortcutsSection } from "./sections/ShortcutsSection";
 import { FocusSprintsSection } from "./sections/FocusSprintsSection";
 import { DataExportSection } from "./sections/DataExportSection";
 import { TitleBar } from "@/components";
-import { rpc } from "@/lib/api";
+import { on, rpc, settingsSection } from "@/lib/api";
+import { useContainerWidth } from "@/lib/useContainerWidth";
 
 const SECTIONS = [
   "General",
@@ -22,6 +23,27 @@ const SECTIONS = [
 
 type Section = (typeof SECTIONS)[number];
 
+/** Maps the IPC schema's slug values back to display labels. */
+const SECTION_BY_SLUG: Record<string, Section> = {
+  general: "General",
+  appearance: "Appearance",
+  nudges: "Nudges",
+  "focus-sprints": "Focus sprints",
+  integrations: "Integrations",
+  shortcuts: "Shortcuts",
+  "data-export": "Data & export",
+};
+
+function resolveInitialSection(initial: string | null | undefined): Section {
+  if (initial && SECTION_BY_SLUG[initial]) return SECTION_BY_SLUG[initial];
+  return "General";
+}
+
+interface SettingsPanelProps {
+  /** Slug of the section to land on. Defaults to `"general"`. */
+  initialSection?: string | null;
+}
+
 const RENDERERS: Record<Section, () => JSX.Element> = {
   General: () => <GeneralSection />,
   Appearance: () => <AppearanceSection />,
@@ -32,13 +54,28 @@ const RENDERERS: Record<Section, () => JSX.Element> = {
   "Data & export": () => <DataExportSection />,
 };
 
-export function SettingsRoot() {
-  const [section, setSection] = useState<Section>("Appearance");
+/**
+ * Settings window root. Honours `initialSection` (passed from the URL via the
+ * preload, or as a prop in tests) and listens for live `settings:section`
+ * pushes from the main process when the cog is clicked again on an already-
+ * open window.
+ */
+export function SettingsRoot({ initialSection }: SettingsPanelProps = {}) {
+  const seed = initialSection ?? settingsSection();
+  const [section, setSection] = useState<Section>(resolveInitialSection(seed));
   const Renderer = RENDERERS[section];
+  const { ref, breakpoint } = useContainerWidth<HTMLDivElement>();
+
+  useEffect(() => {
+    return on("settings:section", (slug) => {
+      setSection(resolveInitialSection(slug));
+    });
+  }, []);
 
   return (
     <div
-      className="attensi window"
+      ref={ref}
+      className={`attensi window bp-${breakpoint}`}
       style={{ display: "flex", flexDirection: "column", height: "100%" }}
     >
       <TitleBar
@@ -47,21 +84,25 @@ export function SettingsRoot() {
       />
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         <nav
+          // Compact width: collapse the sidebar to a thinner nav with shorter
+          // labels; otherwise keep the original 160px column.
           style={{
-            width: 160,
+            width: breakpoint === "compact" ? 96 : 160,
             borderRight: "1px solid var(--line)",
             padding: "10px 0",
             background: "var(--bg)",
+            flexShrink: 0,
           }}
         >
           {SECTIONS.map((s) => (
             <button
               key={s}
               onClick={() => setSection(s)}
+              title={s}
               style={{
                 display: "block",
                 width: "100%",
-                padding: "7px 16px",
+                padding: breakpoint === "compact" ? "7px 10px" : "7px 16px",
                 fontSize: 12,
                 fontWeight: section === s ? 600 : 400,
                 background: section === s ? "var(--surface)" : "transparent",
@@ -73,6 +114,9 @@ export function SettingsRoot() {
                 transition: "background 0.1s",
                 textAlign: "left",
                 color: "var(--ink)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
               }}
             >
               {s}
@@ -81,7 +125,11 @@ export function SettingsRoot() {
         </nav>
         <div
           className="scroll"
-          style={{ flex: 1, padding: "20px 24px", overflow: "auto" }}
+          style={{
+            flex: 1,
+            padding: breakpoint === "compact" ? "16px" : "20px 24px",
+            overflow: "auto",
+          }}
         >
           <Renderer />
         </div>

@@ -1,8 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useStore } from "@/store";
 import { EmptyState, Ic, TagPicker } from "@/components";
 import { rpc } from "@/lib/api";
 import { useTags } from "@/lib/useTags";
+import {
+  clearDraft,
+  getDraft,
+  setDraft as persistDraft,
+} from "@/lib/brainDumpDraft";
 
 function relativeWhen(ts: number, now: number): string {
   const diff = Math.max(0, now - ts);
@@ -19,8 +24,15 @@ function relativeWhen(ts: number, now: number): string {
 export function InboxTab() {
   const captures = useStore((s) => s.captures);
   const tick = useStore((s) => s.tick);
-  const [draft, setDraft] = useState("");
+  const [draft, setDraftLocal] = useState(() => getDraft());
   const { tags } = useTags();
+
+  // Persist any in-progress draft so the close-quit auto-save can recover it.
+  useEffect(() => {
+    persistDraft(draft);
+  }, [draft]);
+
+  const setDraft = (value: string): void => setDraftLocal(value);
 
   const untagged = captures.filter((c) => !c.tag).length;
 
@@ -29,6 +41,7 @@ export function InboxTab() {
     if (!text) return;
     await rpc("capture:create", { text });
     setDraft("");
+    clearDraft();
   };
 
   return (
