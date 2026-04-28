@@ -1,8 +1,8 @@
 import { entries, tasks, projects } from "../db/repos";
-import { register } from "./handlers";
-import { broadcastChanges } from "./broadcast";
 import { startOfDay } from "../db/utils";
 import { db } from "../db";
+import { register } from "./handlers";
+import { broadcastChanges } from "./broadcast";
 
 export function registerTimer(): void {
   register("task:start", ({ taskId }) => {
@@ -69,12 +69,14 @@ export function registerTimer(): void {
       throw new Error("Title cannot be empty");
     }
     const projectId = safePatch.projectId ?? cur.projectId;
-    const ticket = safePatch.ticket !== undefined ? safePatch.ticket : cur.ticket;
+    const ticket =
+      safePatch.ticket !== undefined ? safePatch.ticket : cur.ticket;
     if (ticket && ticket.trim()) {
       const conflict = tasks
         .list()
         .find(
-          (t) => t.id !== id && t.projectId === projectId && t.ticket === ticket,
+          (t) =>
+            t.id !== id && t.projectId === projectId && t.ticket === ticket,
         );
       if (conflict) {
         throw new Error(
@@ -152,8 +154,7 @@ export function registerTimer(): void {
   register("project:dailyBreakdown", ({ projectId, range }) => {
     const now = Date.now();
     const dayMs = 24 * 60 * 60_000;
-    const days =
-      range === "week" ? 7 : range === "month" ? 30 : 90; // "all" capped to 90 days for the chart.
+    const days = range === "week" ? 7 : range === "month" ? 30 : 90; // "all" capped to 90 days for the chart.
     const since = startOfDay(now) - (days - 1) * dayMs;
     const rows = db()
       .prepare(

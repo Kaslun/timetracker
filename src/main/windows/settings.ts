@@ -1,13 +1,15 @@
 import type { BrowserWindow } from "electron";
 import type { SettingsSectionId } from "@shared/schemas";
+import { broadcast } from "../ipc/events";
 import { createWindow } from "./factory";
 import { state } from "./registry";
-import { broadcast } from "../ipc/events";
 import { attachBoundsPersistence, restoreBounds } from "./persistedBounds";
 
 const DEFAULT_BOUNDS = { width: 640, height: 640 };
 
-export function ensureSettings(opts: { section?: SettingsSectionId } = {}): BrowserWindow {
+export function ensureSettings(
+  opts: { section?: SettingsSectionId } = {},
+): BrowserWindow {
   const section = opts.section ?? "general";
   if (state.settings && !state.settings.isDestroyed()) {
     state.settings.show();

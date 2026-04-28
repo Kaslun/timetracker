@@ -29,30 +29,27 @@ import {
   validateBinding,
   type ShortcutKey,
 } from "@shared/hotkeys";
+import { SectionHeading, SectionTitle } from "../Field";
 import { useStore } from "@/store";
 import { rpc } from "@/lib/api";
-import { SectionHeading, SectionTitle } from "../Field";
 
 type Overrides = Record<string, { combo: string }>;
 
 export function ShortcutsSection() {
-  const overrides = useStore(
-    (s) => s.settings.shortcutOverrides,
-  ) as Overrides;
+  const overrides = useStore((s) => s.settings.shortcutOverrides) as Overrides;
   const [editing, setEditing] = useState<ShortcutKey | null>(null);
 
   const save = (overrides: Overrides): Promise<unknown> =>
     rpc("settings:patch", { shortcutOverrides: overrides });
 
   const onResetAll = (): void => {
-    if (!window.confirm("Reset every shortcut to its default binding?"))
-      return;
+    if (!window.confirm("Reset every shortcut to its default binding?")) return;
     void save({});
   };
 
   const onResetOne = (key: ShortcutKey): void => {
-    const next: Overrides = { ...overrides };
-    delete next[key];
+    const { [key]: _omit, ...next } = overrides;
+    void _omit;
     void save(next);
   };
 
@@ -205,12 +202,7 @@ interface CaptureProps {
   onCommit: (combo: string, swap?: ShortcutKey) => void;
 }
 
-function Capture({
-  shortcutKey,
-  overrides,
-  onCancel,
-  onCommit,
-}: CaptureProps) {
+function Capture({ shortcutKey, overrides, onCancel, onCommit }: CaptureProps) {
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [conflict, setConflict] = useState<{ key: ShortcutKey } | null>(null);

@@ -17,16 +17,12 @@
  * heights, same swatches and chips, same `--accent` highlights.
  */
 import { useEffect, useMemo, useState } from "react";
-import type {
-  Project,
-  ProjectStats,
-  TaskWithProject,
-} from "@shared/types";
+import type { Project, ProjectStats, TaskWithProject } from "@shared/types";
+import { TaskRow } from "./TaskRow";
 import { useStore } from "@/store";
 import { EmptyState, Ic, Swatch, TimeDisplay } from "@/components";
 import { rpc } from "@/lib/api";
 import { formatHM } from "@/lib/time";
-import { TaskRow } from "./TaskRow";
 
 type Range = "week" | "month";
 
@@ -80,9 +76,7 @@ export function ProjectsTab() {
     );
   }
 
-  const visible = projects.filter(
-    (p) => showArchived || p.archivedAt == null,
-  );
+  const visible = projects.filter((p) => showArchived || p.archivedAt == null);
 
   return (
     <div
@@ -283,7 +277,12 @@ function ProjectListRow({
       />
       <div
         className="project-row-actions"
-        style={{ display: "flex", gap: 2, opacity: 0, transition: "opacity 120ms" }}
+        style={{
+          display: "flex",
+          gap: 2,
+          opacity: 0,
+          transition: "opacity 120ms",
+        }}
       >
         <button
           className="btn ghost icon"
@@ -448,9 +447,7 @@ function ProjectForm({ project, onSubmit, onCancel }: ProjectFormProps) {
               borderRadius: "50%",
               background: c,
               border:
-                color === c
-                  ? "2px solid var(--ink)"
-                  : "2px solid transparent",
+                color === c ? "2px solid var(--ink)" : "2px solid transparent",
               cursor: "pointer",
               padding: 0,
             }}
@@ -729,10 +726,7 @@ function BreakdownChart({
                 opacity: d.seconds === 0 ? 0.15 : 0.8,
               }}
             />
-            <span
-              className="mono ink-3"
-              style={{ fontSize: 8, lineHeight: 1 }}
-            >
+            <span className="mono ink-3" style={{ fontSize: 8, lineHeight: 1 }}>
               {d.date.slice(5)}
             </span>
           </div>

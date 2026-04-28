@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type * as BrainDumpDraft from "../../src/renderer/lib/brainDumpDraft";
 
 // Mock the renderer RPC bridge: api.ts looks up `window.attensi.invoke` at
 // call time, which only exists inside a real Electron renderer. The brain
@@ -22,7 +23,7 @@ class MemoryStorage {
   };
 }
 
-let mod: typeof import("../../src/renderer/lib/brainDumpDraft");
+let mod: typeof BrainDumpDraft;
 
 beforeEach(async () => {
   rpc.mockReset();

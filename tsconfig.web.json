@@ -17,10 +17,9 @@
     "jsx": "react-jsx",
     "useDefineForClassFields": true,
     "outDir": "out/types-web",
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["src/renderer/*"],
-      "@shared/*": ["src/shared/*"]
+      "@/*": ["./src/renderer/*"],
+      "@shared/*": ["./src/shared/*"]
     }
   },
   "include": ["src/renderer", "src/shared"]

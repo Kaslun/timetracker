@@ -9,9 +9,9 @@
  * Format is one line per event: `<ISO ts>  <action>  <details>`. Plain text on
  * purpose: easy to grep, easy to email to support, easy to manually inspect.
  */
-import { app } from "electron";
 import { appendFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { app } from "electron";
 import { logger } from "./logger";
 
 const log = logger("audit");
@@ -26,7 +26,10 @@ export function auditLogPath(): string {
  * Append a single line to the audit log. Failures are logged but never
  * thrown — destructive flows keep going even if disk is full.
  */
-export function audit(action: string, details: Record<string, unknown> = {}): void {
+export function audit(
+  action: string,
+  details: Record<string, unknown> = {},
+): void {
   const line = `${new Date().toISOString()}  ${action}  ${JSON.stringify(details)}\n`;
   try {
     const path = auditLogPath();

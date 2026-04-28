@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { TaskWithProject } from "@shared/types";
+import { TaskRow } from "./TaskRow";
 import { useStore } from "@/store";
 import { EmptyState, Ic } from "@/components";
 import { rpc, on } from "@/lib/api";
 import { formatHM } from "@/lib/time";
-import { TaskRow } from "./TaskRow";
 
 export function TasksTab() {
   const tasks = useStore((s) => s.tasks);
@@ -230,4 +230,3 @@ export function TasksTab() {
     </div>
   );
 }
-

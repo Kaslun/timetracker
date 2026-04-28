@@ -18,11 +18,11 @@
  */
 import { LayoutGroup, motion, Reorder } from "framer-motion";
 import { useEffect, useRef, useState, type JSX } from "react";
+import { normaliseTabOrder, TAB_LABELS } from "./tabOrder";
 import { Ic } from "@/components";
 import { DUR, SPRING } from "@/lib/motion";
 import { useMotionEnabled } from "@/lib/useMotionEnabled";
 import { useStore } from "@/store";
-import { normaliseTabOrder, TAB_LABELS } from "./tabOrder";
 
 const TAB_ICONS: Record<TabId, () => JSX.Element> = {
   timeline: () => <Ic.Calendar s={13} />,
@@ -108,7 +108,11 @@ export function Tabs({ active, onTab, inboxCount, onDump }: TabsProps) {
                 as="div"
                 whileDrag={
                   motionOn
-                    ? { scale: 1.04, boxShadow: "0 4px 12px rgba(0,0,0,0.18)", zIndex: 2 }
+                    ? {
+                        scale: 1.04,
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.18)",
+                        zIndex: 2,
+                      }
                     : undefined
                 }
                 transition={motionOn ? SPRING.snap : { duration: 0 }}
