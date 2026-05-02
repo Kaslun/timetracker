@@ -157,10 +157,37 @@ export const tasks = {
   getByExternalUrl(provider: string, url: string): Task | null {
     const r = db()
       .prepare(
-        "SELECT * FROM tasks WHERE integration_id = ? AND external_url = ? LIMIT 1",
+        "SELECT * FROM tasks WHERE integration_id = ? AND external_url = ? ORDER BY ROWID ASC LIMIT 1",
       )
       .get(provider, url) as Row | undefined;
     return r ? map(r) : null;
+  },
+
+  /**
+   * Look up a task by `(integrationId, ticket)`. Defensive fallback for
+   * the registry's persist step when a provider returns no external URL
+   * (or the URL changed) — the ticket key is still stable.
+   */
+  findByIntegrationTicket(provider: string, ticket: string): Task | null {
+    const r = db()
+      .prepare(
+        "SELECT * FROM tasks WHERE integration_id = ? AND ticket = ? ORDER BY ROWID ASC LIMIT 1",
+      )
+      .get(provider, ticket) as Row | undefined;
+    return r ? map(r) : null;
+  },
+
+  /** Number of entries pointing at this task (used to gate destructive cleanup). */
+  entryCount(taskId: string): number {
+    const r = db()
+      .prepare("SELECT COUNT(*) AS n FROM entries WHERE task_id = ?")
+      .get(taskId) as { n: number };
+    return r?.n ?? 0;
+  },
+
+  /** Hard-delete a task. Caller is responsible for checking `entryCount` first. */
+  hardDelete(taskId: string): void {
+    db().prepare("DELETE FROM tasks WHERE id = ?").run(taskId);
   },
 
   /** Distinct `tag` values across the active task set (for the filter chip). */

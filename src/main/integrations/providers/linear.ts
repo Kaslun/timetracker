@@ -1,6 +1,5 @@
 import type { FillSuggestion, Project, Task } from "@shared/types";
 import { buildExternalUrl } from "@shared/integrations/registry";
-import { newId } from "../../db";
 import { settings as settingsRepo } from "../../db/repos/settings";
 import type { ConnectInput } from "../types";
 import { BaseProvider } from "./base";
@@ -20,6 +19,69 @@ import { BaseProvider } from "./base";
  * tagging the returned tasks with the connected workspace and only emitting
  * tasks the "current user" would own.
  */
+
+/**
+ * Mock-only: the user's real Linear teams (until the live GraphQL fetch
+ * lands). Edit this list when teams change — the provider derives stable
+ * project IDs from `key`, so renaming a project here won't create a new
+ * row in the DB. To rename, change the `name` only; to actually re-key a
+ * project, you'll need to wipe local data first.
+ */
+const LINEAR_USER_PROJECTS = [
+  { key: "SKL", name: "Skills RT", color: "#5e6ad2" },
+  { key: "OPE", name: "Operations", color: "#f59e42" },
+  { key: "FST", name: "Fast", color: "#7d62d4" },
+] as const;
+
+/** Mock-only: representative tasks for each project, all assigned to "me". */
+const LINEAR_USER_TASKS: ReadonlyArray<{
+  projectKey: (typeof LINEAR_USER_PROJECTS)[number]["key"];
+  ticket: string;
+  title: string;
+  tag: string | null;
+  priority: Task["priority"];
+}> = [
+  {
+    projectKey: "SKL",
+    ticket: "SKL-104",
+    title: "Refresh onboarding scenario library",
+    tag: "Improvement",
+    priority: "high",
+  },
+  {
+    projectKey: "SKL",
+    ticket: "SKL-281",
+    title: "Wire feedback survey into post-session flow",
+    tag: "Story",
+    priority: "medium",
+  },
+  {
+    projectKey: "OPE",
+    ticket: "OPE-42",
+    title: "Investigate flaky export pipeline",
+    tag: "bug",
+    priority: "high",
+  },
+  {
+    projectKey: "OPE",
+    ticket: "OPE-67",
+    title: "Document on-call escalation paths",
+    tag: null,
+    priority: "low",
+  },
+  {
+    projectKey: "FST",
+    ticket: "FST-12",
+    title: "Speed up cold-start of the runtime",
+    tag: "Improvement",
+    priority: "urgent",
+  },
+];
+
+/** Stable per-row IDs so refresh is idempotent (no duplicate inserts). */
+const projectId = (key: string): string => `prj_linear_${key.toLowerCase()}`;
+const taskId = (ticket: string): string => `tsk_linear_${ticket.toLowerCase()}`;
+
 export class LinearProvider extends BaseProvider {
   readonly id = "linear" as const;
   readonly meta = {
@@ -48,108 +110,40 @@ export class LinearProvider extends BaseProvider {
       assigneeOnly: true,
       includeUnassignedICreated: false,
     };
+    // The mock universe is entirely "assigned to me", so the filter
+    // collapses to a no-op. We keep the cfg lookup so the contract stays
+    // visible — when the live GraphQL fetch lands it must respect both
+    // assigneeOnly and includeUnassignedICreated.
+    void cfg;
+
     const workspace = "attensi";
     const now = Date.now();
-    const mobileId = newId("prj");
-    const platformId = newId("prj");
-    const projects: Project[] = [
-      {
-        id: mobileId,
-        name: "Mobile Runtime",
-        color: "#5e6ad2",
-        ticketPrefix: "MOB",
-        integrationId: this.id,
-        archivedAt: null,
-      },
-      {
-        id: platformId,
-        name: "Platform",
-        color: "#7d62d4",
-        ticketPrefix: "PLT",
-        integrationId: this.id,
-        archivedAt: null,
-      },
-    ];
-    // Mock dataset: pretend "MOB-104" + "PLT-281" are assigned to the user
-    // and "PLT-300" is unassigned-but-created-by-them. The real implementation
-    // applies `assignee: { isMe: true }` (and an OR with `creator` if
-    // includeUnassignedICreated) at the GraphQL layer.
-    const all: Array<Task & { _assignedToMe: boolean; _createdByMe: boolean }> =
-      [
-        {
-          id: newId("tsk"),
-          projectId: mobileId,
-          ticket: "MOB-104",
-          title: "Fix iOS build crash on cold start",
-          tag: "dev",
-          archivedAt: null,
-          completedAt: null,
-          createdAt: now,
-          updatedAt: now,
-          integrationId: this.id,
-          priority: "high",
-          externalUrl: buildExternalUrl({
-            source: "linear",
-            ticket: "MOB-104",
-            workspace,
-          }),
-          _assignedToMe: true,
-          _createdByMe: false,
-        },
-        {
-          id: newId("tsk"),
-          projectId: platformId,
-          ticket: "PLT-281",
-          title: "Migrate auth tokens to keychain",
-          tag: "dev",
-          archivedAt: null,
-          completedAt: null,
-          createdAt: now,
-          updatedAt: now,
-          integrationId: this.id,
-          priority: "medium",
-          externalUrl: buildExternalUrl({
-            source: "linear",
-            ticket: "PLT-281",
-            workspace,
-          }),
-          _assignedToMe: true,
-          _createdByMe: true,
-        },
-        {
-          id: newId("tsk"),
-          projectId: platformId,
-          ticket: "PLT-300",
-          title: "Document onboarding flow",
-          tag: "docs",
-          archivedAt: null,
-          completedAt: null,
-          createdAt: now,
-          updatedAt: now,
-          integrationId: this.id,
-          priority: "low",
-          externalUrl: buildExternalUrl({
-            source: "linear",
-            ticket: "PLT-300",
-            workspace,
-          }),
-          _assignedToMe: false,
-          _createdByMe: true,
-        },
-      ];
-    const tasks: Task[] = all
-      .filter((t) => {
-        if (!cfg.assigneeOnly) return true;
-        if (t._assignedToMe) return true;
-        if (cfg.includeUnassignedICreated && t._createdByMe) return true;
-        return false;
-      })
-      // Strip the synthetic flags before returning.
-      .map(({ _assignedToMe: _a, _createdByMe: _c, ...rest }) => {
-        void _a;
-        void _c;
-        return rest;
-      });
+    const projects: Project[] = LINEAR_USER_PROJECTS.map((p) => ({
+      id: projectId(p.key),
+      name: p.name,
+      color: p.color,
+      ticketPrefix: p.key,
+      integrationId: this.id,
+      archivedAt: null,
+    }));
+    const tasks: Task[] = LINEAR_USER_TASKS.map((t) => ({
+      id: taskId(t.ticket),
+      projectId: projectId(t.projectKey),
+      ticket: t.ticket,
+      title: t.title,
+      tag: t.tag,
+      archivedAt: null,
+      completedAt: null,
+      createdAt: now,
+      updatedAt: now,
+      integrationId: this.id,
+      priority: t.priority,
+      externalUrl: buildExternalUrl({
+        source: "linear",
+        ticket: t.ticket,
+        workspace,
+      }),
+    }));
     return { projects, tasks };
   }
 
@@ -159,8 +153,8 @@ export class LinearProvider extends BaseProvider {
         id: "linear_act_1",
         at: "10:42",
         src: "Linear",
-        label: "Comment on MOB-104",
-        meta: "Mobile Runtime",
+        label: "Comment on SKL-104",
+        meta: "Skills RT",
         confidence: 0.78,
         picked: false,
         durationMinutes: 15,

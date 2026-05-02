@@ -180,19 +180,59 @@ class Registry {
     broadcast("integrations:changed", this.list());
   }
 
+  /**
+   * Idempotent upsert of one provider's projects + tasks.
+   *
+   * Dedupe strategy (defence-in-depth — providers should also use stable
+   * IDs, but historical bugs once produced a fresh random ID per refresh,
+   * which silently duplicated every row on every sync):
+   *
+   *   - Project: match by `id`, then fall back to `(integrationId, name)`.
+   *   - Task:    match by `id`, then `(integrationId, externalUrl)`,
+   *              then `(integrationId, ticket)`.
+   *
+   * Any matched existing row is left untouched (so the user's local edits
+   * to title/tag aren't clobbered) and we simply remap the incoming
+   * `projectId` so freshly-inserted tasks land under the canonical project.
+   *
+   * Once the canonical set is persisted, `cleanupOrphanedRows` drops any
+   * legacy rows owned by this integration that are no longer in the
+   * canonical set AND have no time entries — recovers a DB that was
+   * polluted by the per-call random-ID bug.
+   */
   private persistProviderData(
     id: IntegrationId,
     data: { projects: Project[]; tasks: Task[] },
   ): void {
     const trx = db().transaction(() => {
+      const projectIdMap = new Map<string, string>();
+      const canonicalProjectIds = new Set<string>();
       for (const p of data.projects) {
-        const existing = projectsRepo.get(p.id);
-        if (!existing) projectsRepo.create(p);
+        const existing =
+          projectsRepo.get(p.id) ??
+          projectsRepo.findByIntegrationName(id, p.name);
+        const canonicalId = existing?.id ?? p.id;
+        projectIdMap.set(p.id, canonicalId);
+        canonicalProjectIds.add(canonicalId);
+        if (!existing) {
+          projectsRepo.create({ ...p, integrationId: p.integrationId ?? id });
+        }
       }
+
+      const canonicalTaskIds = new Set<string>();
       for (const t of data.tasks) {
-        if (!tasksRepo.get(t.id)) {
+        const remappedProjectId = projectIdMap.get(t.projectId) ?? t.projectId;
+        const existing =
+          tasksRepo.get(t.id) ??
+          (t.externalUrl
+            ? tasksRepo.getByExternalUrl(id, t.externalUrl)
+            : null) ??
+          (t.ticket ? tasksRepo.findByIntegrationTicket(id, t.ticket) : null);
+        const canonicalId = existing?.id ?? t.id;
+        canonicalTaskIds.add(canonicalId);
+        if (!existing) {
           tasksRepo.create({
-            projectId: t.projectId,
+            projectId: remappedProjectId,
             title: t.title,
             ticket: t.ticket,
             tag: t.tag,
@@ -203,8 +243,36 @@ class Registry {
           });
         }
       }
+
+      this.cleanupOrphanedRows(id, canonicalProjectIds, canonicalTaskIds);
     });
     trx();
+  }
+
+  /**
+   * Remove integration-owned rows that the provider no longer reports AND
+   * that have no tracked time entries. Lets us recover from the historical
+   * "fresh ID per refresh" bug without touching anything the user has
+   * actively logged time against.
+   */
+  private cleanupOrphanedRows(
+    id: IntegrationId,
+    keepProjectIds: Set<string>,
+    keepTaskIds: Set<string>,
+  ): void {
+    for (const t of tasksRepo
+      .list()
+      .filter((row) => row.integrationId === id && !keepTaskIds.has(row.id))) {
+      if (tasksRepo.entryCount(t.id) === 0) {
+        tasksRepo.hardDelete(t.id);
+      }
+    }
+    for (const p of projectsRepo.listByIntegration(id)) {
+      if (keepProjectIds.has(p.id)) continue;
+      if (projectsRepo.taskCount(p.id) === 0) {
+        projectsRepo.hardDelete(p.id);
+      }
+    }
   }
 
   private purgeProviderData(id: IntegrationId): void {

@@ -36,7 +36,51 @@ export const projects = {
       | undefined;
     return r ? map(r) : null;
   },
-  create(p: Project | Omit<Project, "id"> & { id?: string }): Project {
+
+  /**
+   * Find an integration-owned project by `(integrationId, name)`.
+   *
+   * Used as a defensive fallback by the integration registry's persist
+   * step: if a provider returns a row whose primary key doesn't match
+   * an existing one (e.g. legacy random IDs), this prevents a duplicate
+   * "Skills RT" / "Operations" row from being inserted on every refresh.
+   * Returns the oldest matching row (by sqlite ROWID) when several exist
+   * so we converge on a single canonical row over time.
+   */
+  findByIntegrationName(integrationId: string, name: string): Project | null {
+    const r = db()
+      .prepare(
+        "SELECT * FROM projects WHERE integration_id = ? AND name = ? ORDER BY ROWID ASC LIMIT 1",
+      )
+      .get(integrationId, name) as Row | undefined;
+    return r ? map(r) : null;
+  },
+
+  /** All non-archived projects owned by one integration. */
+  listByIntegration(integrationId: string): Project[] {
+    return (
+      db()
+        .prepare("SELECT * FROM projects WHERE integration_id = ?")
+        .all(integrationId) as Row[]
+    ).map(map);
+  },
+
+  /** Number of tasks (any status) attached to a project. */
+  taskCount(projectId: string): number {
+    const r = db()
+      .prepare("SELECT COUNT(*) AS n FROM tasks WHERE project_id = ?")
+      .get(projectId) as { n: number };
+    return r?.n ?? 0;
+  },
+
+  /**
+   * Hard-delete a project. Tasks cascade via FK; caller is responsible for
+   * checking `taskCount` first when there might be tracked entries.
+   */
+  hardDelete(projectId: string): void {
+    db().prepare("DELETE FROM projects WHERE id = ?").run(projectId);
+  },
+  create(p: Project | (Omit<Project, "id"> & { id?: string })): Project {
     const next: Project = {
       ...p,
       id: p.id ?? newId("prj"),
@@ -102,10 +146,7 @@ export const projects = {
    *   - `"month"`: the past 30 days from `now`.
    *   - `"all"`: every entry ever.
    */
-  stats(
-    range: "week" | "month" | "all",
-    now = Date.now(),
-  ): ProjectStats[] {
+  stats(range: "week" | "month" | "all", now = Date.now()): ProjectStats[] {
     const since =
       range === "all"
         ? 0
