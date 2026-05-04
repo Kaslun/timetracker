@@ -1,6 +1,6 @@
 {
   "name": "attensi-time-tracker",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Time Tracker — a calm Windows desktop time tracker",
   "main": "out/main/index.js",
   "author": {
